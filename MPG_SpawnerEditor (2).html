@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meccmax's MPG_Spawner Point Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c14;
+  --panel: #0c1220;
+  --card: #101828;
+  --border: #1e2d45;
+  --border-hi: #2a4060;
+  --blue: #3b82f6;
+  --blue-bright: #60a5fa;
+  --blue-dim: #1e3a5f;
+  --cyan: #22d3ee;
+  --cyan-dim: #0e4a57;
+  --amber: #f59e0b;
+  --amber-dim: #451a03;
+  --red: #ef4444;
+  --green: #22c55e;
+  --text: #cbd5e1;
+  --text-dim: #475569;
+  --text-bright: #f1f5f9;
+  --glow: 0 0 12px rgba(59,130,246,0.3);
+  --glow-cyan: 0 0 12px rgba(34,211,238,0.3);
+  --scan: rgba(59,130,246,0.015);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh; overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg,transparent,transparent 2px,var(--scan) 2px,var(--scan) 4px);
+  pointer-events: none; z-index: 9999;
+}
+
+/* ── HEADER ── */
+.header {
+  background: linear-gradient(135deg,#080c14 0%,#0d1829 60%,#080c14 100%);
+  border-bottom: 2px solid var(--blue);
+  padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 4px 30px rgba(59,130,246,0.15);
+  position: sticky; top: 0; z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header-logo {
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: 18px; color: var(--blue-bright);
+  text-shadow: var(--glow); letter-spacing: 1px; line-height: 1.2;
+}
+.header-sub { font-size: 9px; color: var(--text-dim); letter-spacing: 4px; text-transform: uppercase; margin-top: 2px; }
+.header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ── STATUS BAR ── */
+.status-bar {
+  background: #060a10; border-bottom: 1px solid var(--border);
+  padding: 5px 24px; display: flex; gap: 20px; align-items: center;
+  font-size: 10px; color: var(--text-dim);
+}
+.status-item { display: flex; gap: 6px; align-items: center; }
+.sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 6px var(--blue); animation: pulse 2s infinite; }
+.sdot.amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+.sdot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+
+/* ── LAYOUT ── */
+.layout { display: flex; height: calc(100vh - 90px); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 290px; min-width: 290px;
+  background: var(--panel); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sidebar-hdr {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sidebar-title { font-family: 'Syne',sans-serif; font-size: 10px; color: var(--text-dim); letter-spacing: 3px; }
+.point-count { background: var(--blue-dim); color: var(--blue-bright); font-size: 10px; padding: 2px 8px; border: 1px solid var(--blue-dim); }
+.point-list { overflow-y: auto; flex: 1; }
+.point-list::-webkit-scrollbar { width: 3px; }
+.point-list::-webkit-scrollbar-thumb { background: var(--blue-dim); }
+.point-item {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background .12s; position: relative;
+}
+.point-item:hover { background: rgba(59,130,246,.05); }
+.point-item.active { background: rgba(59,130,246,.1); border-left: 3px solid var(--blue); }
+.point-item.active::before {
+  content: '▶'; position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+  color: var(--blue); font-size: 7px;
+}
+.point-name { font-size: 12px; color: var(--blue-bright); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.point-meta { font-size: 9px; color: var(--text-dim); display: flex; gap: 6px; flex-wrap: wrap; }
+.ptag {
+  background: var(--border); padding: 1px 5px; font-size: 8px;
+  color: var(--text-dim); border: 1px solid var(--border);
+}
+.ptag.blue { background: rgba(59,130,246,.15); color: var(--blue-bright); border-color: var(--blue-dim); }
+.ptag.cyan { background: rgba(34,211,238,.12); color: var(--cyan); border-color: var(--cyan-dim); }
+.ptag.amber { background: rgba(245,158,11,.12); color: var(--amber); border-color: #78350f; }
+.ptag.red { background: rgba(239,68,68,.12); color: var(--red); border-color: #7f1d1d; }
+.ptag.green { background: rgba(34,197,94,.12); color: var(--green); border-color: #14532d; }
+.sidebar-footer { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── EDITOR ── */
+.editor { flex: 1; overflow-y: auto; padding: 22px; background: var(--bg); }
+.editor::-webkit-scrollbar { width: 5px; }
+.editor::-webkit-scrollbar-thumb { background: var(--border-hi); }
+
+/* ── WELCOME ── */
+.welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; gap: 20px; text-align: center; }
+.welcome-logo { font-family: 'Syne',sans-serif; font-size: 52px; font-weight: 800; color: var(--blue-dim); text-shadow: 0 0 40px rgba(59,130,246,.25); line-height: 1; }
+.welcome-title { font-family: 'Syne',sans-serif; font-size: 18px; font-weight: 700; color: var(--blue-bright); letter-spacing: 2px; }
+.welcome-sub { font-size: 11px; color: var(--text-dim); letter-spacing: 3px; max-width: 420px; }
+.welcome-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.drop-zone {
+  border: 2px dashed var(--border-hi); padding: 32px 48px; text-align: center;
+  cursor: pointer; transition: all .2s; background: #060a10; margin-top: 8px;
+}
+.drop-zone:hover,.drop-zone.drag-over { border-color: var(--blue); background: rgba(59,130,246,.04); box-shadow: var(--glow); }
+
+/* ── SECTION ── */
+.section { background: var(--card); border: 1px solid var(--border); margin-bottom: 14px; }
+.section-hdr {
+  background: rgba(59,130,246,.07); border-bottom: 1px solid var(--border);
+  padding: 7px 14px; display: flex; align-items: center; gap: 8px;
+  font-family: 'Syne',sans-serif; font-size: 10px; color: var(--blue-bright);
+  letter-spacing: 2px; cursor: pointer; user-select: none;
+}
+.section-hdr:hover { background: rgba(59,130,246,.12); }
+.section-hdr .chev { margin-left: auto; font-size: 9px; transition: transform .18s; }
+.section-hdr .chev.open { transform: rotate(180deg); }
+.section-body { padding: 14px; }
+.section-body.hidden { display: none; }
+
+/* ── FIELDS ── */
+.field { display: flex; flex-direction: column; gap: 5px; }
+.fg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.fg4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+.fwide { grid-column: 1/-1; }
+label { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+.hint { font-size: 9px; color: var(--text-dim); opacity: .55; margin-top: 1px; }
+input[type=text],input[type=number],select,textarea {
+  background: #060a10; border: 1px solid var(--border);
+  color: var(--text-bright); font-family: 'JetBrains Mono',monospace;
+  font-size: 12px; padding: 7px 9px; outline: none; width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus,select:focus,textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue-dim),var(--glow); }
+select option { background: #0c1220; }
+textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+.toggle-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+.toggle-label { font-size: 11px; color: var(--text); flex: 1; }
+.toggle { position: relative; width: 42px; height: 20px; }
+.toggle input { display: none; }
+.toggle-track {
+  position: absolute; inset: 0; background: var(--border);
+  border: 1px solid var(--border-hi); cursor: pointer; transition: background .18s;
+}
+.toggle-track::after {
+  content: ''; position: absolute; width: 14px; height: 14px;
+  background: var(--text-dim); top: 2px; left: 2px;
+  transition: transform .18s, background .18s;
+}
+.toggle input:checked + .toggle-track { background: var(--blue-dim); border-color: var(--blue); }
+.toggle input:checked + .toggle-track::after { transform: translateX(22px); background: var(--blue); box-shadow: 0 0 6px var(--blue); }
+
+/* ── POINT HEADER ── */
+.point-hdr { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
+.point-hdr-id { font-family: 'Syne',sans-serif; font-size: 40px; font-weight: 800; color: var(--blue-dim); line-height: 1; min-width: 64px; text-shadow: 0 0 30px rgba(59,130,246,.2); }
+.point-hdr-title { font-family: 'Syne',sans-serif; font-size: 15px; font-weight: 700; color: var(--blue-bright); }
+.point-hdr-sub { font-size: 9px; color: var(--text-dim); margin-top: 3px; letter-spacing: 2px; }
+.label-badge {
+  font-size: 9px; color: var(--amber);
+  background: rgba(245,158,11,.1); border: 1px solid #78350f;
+  padding: 1px 7px; letter-spacing: 1px; margin-top: 2px;
+  display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.label-input-wrap { position: relative; }
+.label-input-wrap input { padding-right: 34px; }
+.label-clear {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  background: none; border: none; border-left: 1px solid var(--border);
+  color: var(--text-dim); cursor: pointer; padding: 0 9px; font-size: 12px;
+  transition: color .12s;
+}
+.label-clear:hover { color: var(--red); }
+
+/* ── SPAWN LIST ── */
+.spawn-entry { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; position: relative; }
+.spawn-entry input { flex: 1; }
+.spawn-del { background: none; border: 1px solid #7f1d1d; color: var(--red); font-size: 11px; padding: 4px 8px; cursor: pointer; font-family: 'JetBrains Mono',monospace; transition: background .12s; flex-shrink:0; }
+.spawn-del:hover { background: rgba(239,68,68,.15); }
+.add-entry { width: 100%; margin-top: 4px; background: none; border: 1px dashed var(--border-hi); color: var(--text-dim); font-size: 10px; padding: 5px; cursor: pointer; font-family: 'JetBrains Mono',monospace; letter-spacing: 2px; transition: all .12s; }
+.add-entry:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ── AUTOCOMPLETE ── */
+.ac-wrap { flex: 1; position: relative; }
+.ac-input { width: 100%; }
+.ac-drop {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 500;
+  background: var(--panel); border: 1px solid var(--blue);
+  box-shadow: 0 8px 24px rgba(0,0,0,.6), var(--glow);
+  max-height: 220px; overflow-y: auto; display: none;
+}
+.ac-drop.show { display: block; }
+.ac-drop::-webkit-scrollbar { width: 4px; }
+.ac-drop::-webkit-scrollbar-thumb { background: var(--blue-dim); }
+.ac-group-hdr {
+  padding: 4px 10px; font-size: 9px; letter-spacing: 2px;
+  color: var(--blue-bright); background: rgba(59,130,246,.12);
+  border-bottom: 1px solid var(--border); position: sticky; top: 0;
+  font-family: 'Syne', sans-serif;
+}
+.ac-item {
+  padding: 6px 10px; font-size: 11px; color: var(--text);
+  cursor: pointer; transition: background .1s; border-bottom: 1px solid var(--border);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ac-item:hover, .ac-item.focused { background: rgba(59,130,246,.15); color: var(--blue-bright); }
+.ac-item mark { background: none; color: var(--cyan); font-weight: 700; }
+.ac-empty { padding: 10px; font-size: 10px; color: var(--text-dim); text-align: center; }
+.ac-count { padding: 4px 10px; font-size: 9px; color: var(--text-dim); background: #060a10; border-top: 1px solid var(--border); text-align: right; }
+
+/* ── MAPPING ── */
+.mapping-block { background: #080c14; border: 1px solid var(--border); padding: 12px; margin-bottom: 10px; position: relative; }
+.mapping-block-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mapping-block-title { font-size: 10px; color: var(--cyan); letter-spacing: 2px; }
+.mapping-objects-list { margin-top: 10px; }
+.mapping-object { background: var(--card); border: 1px solid var(--border); padding: 10px; margin-bottom: 8px; position: relative; }
+.mapping-object-hdr { font-size: 10px; color: var(--text-dim); margin-bottom: 8px; display: flex; justify-content: space-between; }
+
+/* ── BUTTONS ── */
+.btn { font-family: 'JetBrains Mono',monospace; font-size: 11px; padding: 7px 14px; border: 1px solid; cursor: pointer; letter-spacing: 1px; transition: all .12s; display: inline-flex; align-items: center; gap: 5px; }
+.btn-blue { background: var(--blue-dim); border-color: var(--blue); color: var(--blue-bright); }
+.btn-blue:hover { background: rgba(59,130,246,.25); box-shadow: var(--glow); }
+.btn-ghost { background: transparent; border-color: var(--border-hi); color: var(--text-dim); }
+.btn-ghost:hover { border-color: var(--blue-dim); color: var(--text); }
+.btn-red { background: rgba(239,68,68,.1); border-color: #7f1d1d; color: #fca5a5; }
+.btn-red:hover { background: rgba(239,68,68,.2); }
+.btn-amber { background: rgba(245,158,11,.1); border-color: #78350f; color: var(--amber); }
+.btn-amber:hover { background: rgba(245,158,11,.2); }
+.btn-cyan { background: rgba(34,211,238,.1); border-color: var(--cyan-dim); color: var(--cyan); }
+.btn-cyan:hover { background: rgba(34,211,238,.2); box-shadow: var(--glow-cyan); }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ── DANGER ── */
+.danger-zone { border: 1px solid #7f1d1d; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 14px; background: rgba(239,68,68,.04); margin-bottom: 8px; }
+.danger-text { font-size: 11px; color: #fca5a5; }
+
+/* ── MODAL ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 1000; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--panel); border: 1px solid var(--blue); box-shadow: 0 0 60px rgba(59,130,246,.25); max-width: 640px; width: 92%; max-height: 85vh; display: flex; flex-direction: column; }
+.modal-hdr { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-family: 'Syne',sans-serif; font-size: 12px; color: var(--blue-bright); letter-spacing: 2px; }
+.modal-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px; }
+.modal-close:hover { color: var(--red); }
+.modal-body { padding: 18px; overflow-y: auto; flex: 1; }
+.modal-footer { padding: 14px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+textarea.json-out { width: 100%; height: 280px; background: #060a10; border: 1px solid var(--border); color: #93c5fd; font-family: 'JetBrains Mono',monospace; font-size: 11px; padding: 10px; resize: vertical; outline: none; }
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 460px;
+  background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1);
+  z-index: 200; box-shadow: -8px 0 40px rgba(0,0,0,.6);
+}
+.right-panel.open { transform: translateX(0); }
+.rp-tabs { display: flex; border-bottom: 2px solid var(--blue); }
+.rp-tab { flex: 1; padding: 11px 8px; font-family: 'Syne',sans-serif; font-size: 9px; letter-spacing: 2px; color: var(--text-dim); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .12s; }
+.rp-tab:hover { color: var(--text); background: rgba(59,130,246,.05); }
+.rp-tab.active { color: var(--blue-bright); border-bottom-color: var(--blue); background: rgba(59,130,246,.08); }
+.rp-close { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 11px 14px; font-size: 15px; }
+.rp-close:hover { color: var(--red); }
+.rp-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.rp-pane { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.rp-pane.active { display: flex; }
+.json-toolbar { padding: 7px 10px; border-bottom: 1px solid var(--border); display: flex; gap: 6px; align-items: center; background: #060a10; flex-shrink: 0; }
+.val-status { flex: 1; font-size: 10px; padding: 3px 8px; border: 1px solid var(--border); display: flex; align-items: center; gap: 5px; }
+.val-status.valid { border-color: #14532d; color: var(--green); background: rgba(34,197,94,.07); }
+.val-status.invalid { border-color: #7f1d1d; color: var(--red); background: rgba(239,68,68,.07); }
+#raw-json { flex: 1; resize: none; padding: 10px; background: #060a10; border: none; outline: none; color: #93c5fd; font-family: 'JetBrains Mono',monospace; font-size: 10px; line-height: 1.6; overflow-y: auto; }
+.err-detail { padding: 6px 10px; font-size: 9px; color: var(--red); background: rgba(239,68,68,.05); border-top: 1px solid #7f1d1d; flex-shrink: 0; display: none; }
+.err-detail.show { display: block; }
+.hist-toolbar { padding: 7px 10px; border-bottom: 1px solid var(--border); display: flex; gap: 6px; align-items: center; font-size: 10px; color: var(--text-dim); background: #060a10; flex-shrink: 0; }
+.hist-list { flex: 1; overflow-y: auto; }
+.hist-list::-webkit-scrollbar { width: 3px; }
+.hist-list::-webkit-scrollbar-thumb { background: var(--blue-dim); }
+.hist-entry { padding: 9px 12px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; display: flex; align-items: flex-start; gap: 8px; }
+.hist-entry:hover { background: rgba(59,130,246,.05); }
+.hist-entry.current { background: rgba(59,130,246,.1); border-left: 3px solid var(--blue); }
+.hist-entry.future { opacity: .4; }
+.hist-num { font-size: 9px; color: var(--text-dim); min-width: 24px; padding-top: 1px; }
+.hist-action { font-size: 11px; color: var(--text-bright); }
+.hist-time { font-size: 9px; color: var(--text-dim); margin-top: 2px; }
+.hist-badge { font-size: 8px; padding: 1px 5px; background: var(--blue-dim); color: var(--blue-bright); border: 1px solid var(--blue-dim); align-self: center; }
+.hist-restore { font-family: 'JetBrains Mono',monospace; font-size: 9px; background: none; border: 1px solid var(--border-hi); color: var(--text-dim); padding: 2px 7px; cursor: pointer; transition: all .12s; align-self: center; }
+.hist-restore:hover { border-color: var(--blue); color: var(--blue); }
+.panel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 199; }
+.panel-overlay.show { display: block; }
+
+/* ── GROUP FOLDERS ── */
+.grp-folder { border-bottom: 1px solid var(--border); }
+.grp-folder-hdr {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 12px; cursor: pointer; user-select: none;
+  background: #0a0f1a; transition: background .12s;
+}
+.grp-folder-hdr:hover { background: rgba(59,130,246,.07); }
+.grp-folder-hdr.drag-over { background: rgba(59,130,246,.18) !important; box-shadow: inset 0 0 0 1px var(--blue); }
+.grp-icon { font-size: 9px; color: var(--text-dim); transition: transform .18s; min-width: 9px; }
+.grp-icon.open { transform: rotate(90deg); }
+.grp-dot { width: 7px; height: 7px; border-radius: 1px; flex-shrink: 0; }
+.grp-name { font-family: 'Syne',sans-serif; font-size: 10px; letter-spacing: 1px; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grp-count { font-size: 8px; color: var(--text-dim); background: var(--border); padding: 1px 5px; }
+.grp-actions { display: flex; gap: 3px; opacity: 0; transition: opacity .12s; }
+.grp-folder-hdr:hover .grp-actions { opacity: 1; }
+.grp-act-btn { background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 10px; padding: 2px 4px; transition: color .12s; }
+.grp-act-btn:hover { color: var(--blue); }
+.grp-act-btn.del:hover { color: var(--red); }
+.grp-points { display: none; }
+.grp-points.open { display: block; }
+.grp-points .point-item { padding-left: 26px; }
+.grp-points.drag-over-zone { background: rgba(59,130,246,.06); min-height: 6px; }
+.ungrouped-hdr {
+  padding: 5px 12px; font-size: 8px; letter-spacing: 3px;
+  color: var(--text-dim); background: #080c14;
+  border-bottom: 1px solid var(--border); text-transform: uppercase;
+}
+.ungrouped-hdr.drag-over { background: rgba(245,158,11,.1); color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
+.point-item[draggable="true"] { cursor: grab; }
+.point-item.dragging { opacity: .3; }
+.drag-handle { color: var(--text-dim); font-size: 10px; opacity: .35; transition: opacity .12s; flex-shrink: 0; cursor: grab; }
+.point-item:hover .drag-handle { opacity: 1; }
+
+/* ── GROUP MODAL ── */
+.color-swatches { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 6px; }
+.color-swatch { width: 26px; height: 26px; cursor: pointer; border: 2px solid transparent; transition: border-color .12s; }
+.color-swatch.sel { border-color: #fff; }
+
+/* ── MISC ── */
+hr.sep { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.copy-flash { animation: flashBlue .4s; }
+@keyframes flashBlue { 0%{background:var(--blue);color:#000}100%{} }
+
+/* ── OCR MODAL ── */
+.ocr-drop-zone {
+  border: 2px dashed var(--border-hi); padding: 28px; text-align: center;
+  cursor: pointer; transition: all .18s; background: #060a10; margin-bottom: 14px;
+}
+.ocr-drop-zone:hover,.ocr-drop-zone.drag-over { border-color: var(--amber); background: rgba(245,158,11,.04); }
+.ocr-queue { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+.ocr-queue::-webkit-scrollbar { width: 3px; }
+.ocr-queue::-webkit-scrollbar-thumb { background: var(--blue-dim); }
+.ocr-item {
+  background: var(--card); border: 1px solid var(--border);
+  display: grid; grid-template-columns: 80px 1fr; position: relative; overflow: hidden;
+}
+.ocr-item.ok  { border-color: #14532d; }
+.ocr-item.err { border-color: #7f1d1d; }
+.ocr-thumb { width:80px;height:80px;object-fit:cover;display:block;border-right:1px solid var(--border);background:#060a10; }
+.ocr-detail { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ocr-fname { font-size: 9px; color: var(--text-dim); white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.ocr-st { font-size: 10px; display: flex; align-items: center; gap: 5px; }
+.ocr-st.scanning { color: var(--amber); }
+.ocr-st.done     { color: var(--green); }
+.ocr-st.err      { color: var(--red); }
+.ocr-fields { display: grid; grid-template-columns:1fr 1fr; gap: 3px; margin-top: 2px; }
+.ocr-field { font-size: 9px; color: var(--text-dim); }
+.ocr-field span { color: var(--text-bright); margin-left:3px; }
+.ocr-fw { grid-column:1/-1; }
+.ocr-assign { display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;align-items:center; }
+.ocr-assign select, .ocr-assign input { font-size:10px;padding:3px 6px;flex:1;min-width:70px; }
+.ocr-rm { position:absolute;top:3px;right:3px;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;transition:color .12s; }
+.ocr-rm:hover { color:var(--red); }
+.ocr-bar { height:2px;background:var(--amber);position:absolute;bottom:0;left:0;width:60%;box-shadow:0 0 6px var(--amber); }
+.ocr-empty { text-align:center;padding:20px;font-size:11px;color:var(--text-dim); }
+
+/* TYPE SELECTOR */
+.type-pill {
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 10px;font-size:10px;cursor:pointer;
+  border:1px solid var(--border-hi);color:var(--text-dim);background:none;
+  font-family:'JetBrains Mono',monospace;transition:all .12s;
+}
+.type-pill.active-trigger { border-color:var(--blue);color:var(--blue-bright);background:rgba(59,130,246,.12); }
+.type-pill.active-spawn   { border-color:var(--cyan);color:var(--cyan);background:rgba(34,211,238,.1); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div>
+      <div class="header-logo">MECCMAX'S MPG SPAWNER EDITOR</div>
+      <div class="header-sub">MPG_Spawner · Point Config Editor · DayZ Mod</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="newConfig()">⊕ NEW</button>
+    <button class="btn btn-ghost" onclick="triggerLoad()">⬆ LOAD</button>
+    <button class="btn btn-ghost" onclick="showPaste()">⎘ PASTE</button>
+    <button class="btn btn-ghost" onclick="openRP('history')">⏱ HISTORY</button>
+    <button class="btn btn-ghost" onclick="openRP('json')">{ } JSON</button>
+    <button class="btn btn-amber" onclick="triggerOcr()">📷 OCR IMPORT</button>
+    <button class="btn btn-amber" onclick="triggerMapInput()">🗺 MAP IMPORT</button>
+    <button class="btn btn-blue" onclick="showExport()">⬇ EXPORT</button>
+  </div>
+</div>
+<input type="file" id="file-in" accept=".json,text/plain" style="position:fixed;left:-9999px;opacity:0;width:1px;height:1px;" onchange="loadFile(event)">
+<input type="file" id="ocr-in" accept="image/*" multiple style="position:fixed;left:-9999px;opacity:0;width:1px;height:1px;" onchange="handleOcrFiles(event)">
+<input type="file" id="map-in" accept=".map,.txt,text/plain" multiple style="position:fixed;left:-9999px;opacity:0;width:1px;height:1px;" onchange="handleMapFiles(event)">
+
+<div class="status-bar">
+  <div class="status-item"><div class="sdot" id="sdot"></div><span id="stxt">NO CONFIG LOADED</span></div>
+  <div class="status-item">POINTS: <span id="pt-count" style="color:var(--blue-bright)">0</span></div>
+  <div class="status-item">HISTORY: <span id="hist-count" style="color:var(--blue-bright)">0</span></div>
+  <div class="status-item" id="s-modified" style="display:none"><div class="sdot amber"></div><span style="color:var(--amber)">UNSAVED CHANGES</span></div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-hdr">
+      <div class="sidebar-title">POINT LIST</div>
+      <div class="point-count" id="sb-count">0</div>
+    </div>
+    <div class="point-list" id="point-list"></div>
+    <div class="sidebar-footer">
+      <button class="btn btn-blue btn-full" onclick="addPoint()" id="add-btn" disabled>⊕ ADD POINT</button>
+      <button class="btn btn-ghost btn-full" onclick="showGroupModal()" id="grp-btn" disabled>⊞ MANAGE GROUPS</button>
+    </div>
+  </div>
+
+  <div class="editor" id="editor">
+    <div class="welcome" id="welcome-screen">
+      <div class="welcome-logo">⊛</div>
+      <div class="welcome-title">MPG SPAWNER EDITOR</div>
+      <div class="welcome-sub">Load an existing Point JSON file or create a new one from scratch.</div>
+      <div class="welcome-actions">
+        <button class="btn btn-blue" onclick="triggerLoad()">⬆ LOAD FILE</button>
+        <button class="btn btn-ghost" onclick="newConfig()">⊕ NEW CONFIG</button>
+        <button class="btn btn-ghost" onclick="showPaste()">⎘ PASTE JSON</button>
+      </div>
+      <div class="drop-zone" id="drop-zone" onclick="triggerLoad()">
+        <div style="font-size:28px;margin-bottom:8px;">📂</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;">DROP JSON FILE HERE</div>
+        <div style="font-size:9px;color:var(--text-dim);opacity:.6;">Point config JSON for MPG_Spawner</div>
+      </div>
+    </div>
+    <div id="point-editor" style="display:none"></div>
+    <div id="no-sel" style="display:none">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:14px;color:var(--text-dim);">
+        <div style="font-size:48px;opacity:.2;">⊛</div>
+        <div style="font-family:'Syne',sans-serif;font-size:12px;letter-spacing:3px;">SELECT A POINT</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL OVERLAY -->
+<div class="panel-overlay" id="panel-overlay" onclick="closeRP()"></div>
+
+<!-- RIGHT PANEL -->
+<div class="right-panel" id="right-panel">
+  <div style="display:flex;align-items:center;background:linear-gradient(135deg,#080c14,#0d1829);border-bottom:2px solid var(--blue);">
+    <div class="rp-tabs" style="flex:1;border-bottom:none;">
+      <button class="rp-tab active" id="tab-json" onclick="switchTab('json')">{ } JSON</button>
+      <button class="rp-tab" id="tab-history" onclick="switchTab('history')">⏱ HISTORY</button>
+    </div>
+    <button class="rp-close" onclick="closeRP()">✕</button>
+  </div>
+  <div class="rp-body">
+    <div class="rp-pane active" id="pane-json">
+      <div class="json-toolbar">
+        <div class="val-status" id="val-status"><span id="val-icon">◎</span><span id="val-msg">Ready</span></div>
+        <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;" onclick="applyRaw()">✓ APPLY</button>
+        <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;" onclick="syncRaw()">↺ SYNC</button>
+      </div>
+      <textarea id="raw-json" spellcheck="false" oninput="onRawInput()" onkeydown="rawKeydown(event)"></textarea>
+      <div class="err-detail" id="err-detail"></div>
+    </div>
+    <div class="rp-pane" id="pane-history">
+      <div class="hist-toolbar">
+        <span>CHANGE LOG</span>
+        <span id="hist-pos" style="margin-left:auto;"></span>
+        <button class="btn btn-ghost" style="font-size:9px;padding:3px 8px;margin-left:8px;" onclick="clearHist()">✕ CLEAR</button>
+      </div>
+      <div class="hist-list" id="hist-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- GROUP MODAL -->
+<div class="modal-overlay" id="grp-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-hdr">⊞ MANAGE GROUPS<button class="modal-close" onclick="closeModal('grp-modal')">✕</button></div>
+    <div class="modal-body">
+      <div id="grp-list-ui"></div>
+      <hr class="sep">
+      <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:10px;">CREATE NEW GROUP</div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>Group Name</label>
+        <input type="text" id="new-grp-name" placeholder='e.g. "North Compound"' onkeydown="if(event.key==='Enter')createGroup()">
+      </div>
+      <div class="field">
+        <label>Color</label>
+        <div class="color-swatches" id="grp-color-picker"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('grp-modal')">CLOSE</button>
+      <button class="btn btn-blue" onclick="createGroup()">⊕ CREATE</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAP IMPORT MODAL -->
+<div class="modal-overlay" id="map-modal">
+  <div class="modal" style="max-width:780px;width:95%;">
+    <div class="modal-hdr">🗺 MAP IMPORT — IMPORT FROM .MAP FILE<button class="modal-close" onclick="closeModal('map-modal')">✕</button></div>
+    <div class="modal-body" style="padding:14px;">
+
+      <!-- Drop zone -->
+      <div class="ocr-drop-zone" id="map-dz" onclick="triggerMapInput()">
+        <div style="font-size:26px;margin-bottom:6px;">🗺</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:3px;">DROP .MAP FILES HERE or click to browse</div>
+        <div style="font-size:9px;color:var(--text-dim);opacity:.6;">Format: ClassName|X Y Z|RotX RotY RotZ — one entry per line. Batch supported.</div>
+      </div>
+
+      <!-- Coordinate type selector — global default, overridable per-row -->
+      <div style="background:var(--card);border:1px solid var(--border);padding:12px 14px;margin-bottom:12px;">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:10px;">DEFAULT COORDINATE TYPE — APPLIES TO ALL ROWS (can override per row)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <button class="type-pill active-trigger" id="map-default-trigger" onclick="setMapDefaultType('trigger')">⊙ Trigger Position</button>
+          <button class="type-pill" id="map-default-spawn" onclick="setMapDefaultType('spawn')">✦ Spawn Position</button>
+          <button class="type-pill" id="map-default-both" onclick="setMapDefaultType('both')" style="border-color:var(--blue-dim);">⊙✦ Both</button>
+        </div>
+
+        <!-- Global point assignment -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
+          <div class="field">
+            <label>Assign to Point</label>
+            <select id="map-point-sel">
+              <option value="new">⊕ Create new point per row</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Default Trigger Radius</label>
+            <input type="text" id="map-def-radius" value="50.0" placeholder="50.0 or 5-50">
+          </div>
+          <div class="field">
+            <label>Spawn Radius (m)</label>
+            <input type="number" id="map-def-spawnradius" value="10" min="0" step="0.5">
+          </div>
+          <div class="field">
+            <label>Debug Color</label>
+            <select id="map-def-color">
+              <option>blue</option><option>green</option><option>red</option><option>yellow</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div id="map-status" style="font-size:10px;color:var(--text-dim);margin-bottom:8px;min-height:16px;display:flex;align-items:center;gap:6px;">
+        <span id="map-status-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text-dim);display:inline-block;flex-shrink:0;"></span>
+        <span id="map-status-msg">No file loaded.</span>
+      </div>
+
+      <!-- Preview table -->
+      <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:6px;">PARSED ENTRIES</div>
+      <div id="map-preview" style="overflow-x:auto;max-height:300px;overflow-y:auto;">
+        <div class="ocr-empty">No .map file loaded yet.</div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between;">
+      <div style="font-size:10px;color:var(--text-dim);align-self:center;" id="map-summary"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="clearMapData()">✕ CLEAR</button>
+        <button class="btn btn-amber" onclick="importMapData()">⬇ IMPORT ALL</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OCR IMPORT MODAL -->
+<div class="modal-overlay" id="ocr-modal">
+  <div class="modal" style="max-width:680px;width:95%;">
+    <div class="modal-hdr">📷 OCR IMPORT — SCREENSHOT TO POINT<button class="modal-close" onclick="closeModal('ocr-modal')">✕</button></div>
+    <div class="modal-body" style="padding:14px;">
+
+      <div class="ocr-drop-zone" id="ocr-dz" onclick="triggerOcr()">
+        <div style="font-size:26px;margin-bottom:6px;">📷</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:3px;">DROP SCREENSHOTS HERE or click to browse</div>
+        <div style="font-size:9px;color:var(--text-dim);opacity:.6;">Batch import supported — PNG or JPG</div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+        <span id="ocr-eng-dot" style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;flex-shrink:0;"></span>
+        <span id="ocr-eng-msg" style="font-size:10px;color:var(--text-dim);flex:1;">Google Gemini Vision (free tier)</span>
+        <input type="password" id="ocr-api-key" placeholder="Gemini API key (AIza...)"
+          style="font-size:10px;padding:4px 8px;flex:2;min-width:0;border-color:var(--border-hi);"
+          oninput="saveApiKey(this.value)" autocomplete="off">
+        <a href="https://aistudio.google.com/app/apikey" target="_blank"
+          style="font-size:9px;color:var(--blue-bright);white-space:nowrap;text-decoration:none;">Get free key ↗</a>
+      </div>
+
+      <div id="ocr-queue" class="ocr-queue">
+        <div class="ocr-empty" id="ocr-empty">No screenshots added yet.</div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between;">
+      <div style="font-size:10px;color:var(--text-dim);align-self:center;" id="ocr-summary"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="clearOcrQueue()">✕ CLEAR</button>
+        <button class="btn btn-amber" onclick="importAllOcr()">⬇ IMPORT ALL READY</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal">
+    <div class="modal-hdr">EXPORT CONFIG<button class="modal-close" onclick="closeModal('export-modal')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Copy or download your Point JSON:</p>
+      <textarea class="json-out" id="json-out" readonly></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="copy-btn" onclick="copyJSON()">⎘ COPY</button>
+      <button class="btn btn-blue" onclick="dlJSON()">⬇ DOWNLOAD</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASTE MODAL -->
+<div class="modal-overlay" id="paste-modal">
+  <div class="modal">
+    <div class="modal-hdr">PASTE JSON<button class="modal-close" onclick="closeModal('paste-modal')">✕</button></div>
+    <div class="modal-body">
+      <textarea class="json-out" id="paste-in" placeholder='[ { "pointId": 1, ... } ]' style="color:var(--text-bright);height:240px;"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('paste-modal')">CANCEL</button>
+      <button class="btn btn-blue" onclick="loadPaste()">⬆ LOAD</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== STATE =====================
+let cfg = null;       // array of points
+let selIdx = -1;
+let modified = false;
+const MAX_HIST = 100;
+let hist = []; let histIdx = -1; let _noSnap = false;
+
+const DEBUG_COLORS = ['blue','green','red','yellow'];
+const NOTIF_ICONS = [
+  'set:dayz_gui image:iconSkull',
+  'set:dayz_inventory image:electricity',
+  'set:dayz_inventory image:woodcrate',
+  'set:dayz_inventory image:Ammo',
+  'set:dayz_inventory image:Food',
+  'set:dayz_inventory image:iconWeapon',
+];
+
+// ===================== HISTORY =====================
+function snap(action) {
+  if (!cfg || _noSnap) return;
+  embedGroupsIntoCfg();
+  const s = JSON.stringify(cfg);
+  extractGroupsFromCfg(); // restore clean working state
+  if (hist.length && hist[hist.length-1].s === s) return;
+  if (histIdx < hist.length-1) hist = hist.slice(0, histIdx+1);
+  hist.push({s, action, t: new Date()});
+  if (hist.length > MAX_HIST) hist.shift();
+  histIdx = hist.length-1;
+  updateHistUI();
+}
+function restoreSnap(i) {
+  if (i<0||i>=hist.length) return;
+  _noSnap = true;
+  cfg = JSON.parse(hist[i].s);
+  extractGroupsFromCfg();
+  histIdx = i; modified = true;
+  document.getElementById('s-modified').style.display='flex';
+  selIdx = Math.min(selIdx, cfg.filter(p=>!p.__mpg_groups).length-1);
+  refreshUI(); updateHistUI();
+  if (document.getElementById('pane-json').classList.contains('active')) syncRaw();
+  _noSnap = false;
+  setStatus('RESTORED: ' + hist[i].action);
+}
+function updateHistUI() {
+  document.getElementById('hist-count').textContent = hist.length;
+  const pos = document.getElementById('hist-pos');
+  if (pos) pos.textContent = hist.length ? `${histIdx+1}/${hist.length}` : '';
+  const el = document.getElementById('hist-list');
+  if (!el) return;
+  if (!hist.length) { el.innerHTML='<div style="padding:20px;text-align:center;font-size:10px;color:var(--text-dim);">No changes yet.</div>'; return; }
+  el.innerHTML='';
+  for (let i=hist.length-1;i>=0;i--) {
+    const h=hist[i], cur=i===histIdx, fut=i>histIdx;
+    const d=document.createElement('div');
+    d.className=`hist-entry${cur?' current':''}${fut?' future':''}`;
+    d.innerHTML=`<div class="hist-num">#${i+1}</div><div style="flex:1"><div class="hist-action">${escHtml(h.action)}</div><div class="hist-time">${fmtTime(h.t)}</div></div>${cur?'<span class="hist-badge">NOW</span>':`<button class="hist-restore" onclick="restoreSnap(${i})">RESTORE</button>`}`;
+    el.appendChild(d);
+  }
+}
+function clearHist() {
+  const input = prompt('Type CLEAR to wipe all history');
+  if (input === null || input.trim().toUpperCase() !== 'CLEAR') return;
+  hist=[]; histIdx=-1; updateHistUI();
+}
+function fmtTime(d) {
+  const s=Math.floor((new Date()-d)/1000);
+  if(s<5)return'just now'; if(s<60)return s+'s ago'; if(s<3600)return Math.floor(s/60)+'m ago';
+  return d.toLocaleTimeString();
+}
+
+// ===================== CORE =====================
+function markMod(action) {
+  modified = true;
+  document.getElementById('s-modified').style.display='flex';
+  if (!_noSnap) snap(action||'Change');
+  if (document.getElementById('right-panel').classList.contains('open')) {
+    if (document.getElementById('pane-json').classList.contains('active')) syncRaw();
+  }
+}
+function setStatus(m) { document.getElementById('stxt').textContent=m; }
+function triggerLoad() { const el=document.getElementById('file-in'); el.value=''; el.click(); }
+function loadFile(e) {
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try {
+      const parsed=JSON.parse(ev.target.result);
+      cfg=Array.isArray(parsed)?parsed:[parsed];
+      extractGroupsFromCfg();
+      hist=[];histIdx=-1; selIdx=-1;
+      refreshUI(); snap('Loaded: '+f.name); setStatus('LOADED — '+f.name);
+    } catch(err){alert('Invalid JSON: '+err.message);}
+  };
+  r.readAsText(f);
+}
+function newConfig() {
+  cfg=[]; groups=[]; hist=[];histIdx=-1; selIdx=-1; modified=false;
+  refreshUI(); snap('New config'); setStatus('NEW CONFIG');
+}function showPaste() { document.getElementById('paste-in').value=''; document.getElementById('paste-modal').classList.add('show'); }
+function loadPaste() {
+  const t=document.getElementById('paste-in').value.trim(); if(!t)return;
+  try {
+    const p=JSON.parse(t); cfg=Array.isArray(p)?p:[p];
+    extractGroupsFromCfg();
+    hist=[];histIdx=-1; selIdx=-1;
+    closeModal('paste-modal'); refreshUI(); snap('Loaded from paste'); setStatus('LOADED FROM PASTE');
+  } catch(e){alert('Invalid JSON: '+e.message);}
+}
+
+// ===================== UI =====================
+function refreshUI() {
+  document.getElementById('welcome-screen').style.display='none';
+  document.getElementById('add-btn').disabled=false;
+  document.getElementById('grp-btn').disabled=false;
+  const n = cfg.filter(p => !p.__mpg_groups).length;
+  document.getElementById('pt-count').textContent=n;
+  document.getElementById('sb-count').textContent=n;
+  renderSidebar();
+  if (selIdx>=0&&selIdx<n) showEditor(selIdx);
+  else { selIdx=-1; document.getElementById('point-editor').style.display='none'; document.getElementById('no-sel').style.display='block'; }}
+
+// ===================== GROUP HELPERS =====================
+const GROUP_COLORS = [
+  '#3b82f6','#06b6d4','#8b5cf6','#ec4899','#f59e0b',
+  '#22c55e','#ef4444','#f97316','#14b8a6','#6366f1',
+  '#84cc16','#e879f9','#fb7185','#34d399','#fbbf24'
+];
+let collapsedGrps = new Set();
+let draggedIdx = null;
+let selectedNewGrpColor = GROUP_COLORS[0];
+
+// ===================== GROUPS STORE =====================
+// cfg is a plain array (mod format). We embed _groups as a special sentinel
+// object { __mpg_groups: [...] } as the LAST element of the array.
+// The mod ignores unknown objects — it only processes entries with pointId.
+// On export we include it so groups survive file round-trips.
+// On load we extract it and remove it from the working array.
+let groups = []; // [ { id, name, color } ]
+
+function extractGroupsFromCfg() {
+  // Pull out any embedded __mpg_groups sentinel
+  const idx = cfg.findIndex(p => p.__mpg_groups);
+  if (idx >= 0) {
+    groups = cfg[idx].__mpg_groups || [];
+    cfg.splice(idx, 1);
+  } else {
+    groups = [];
+  }
+}
+
+function embedGroupsIntoCfg() {
+  // Remove any existing sentinel first
+  const idx = cfg.findIndex(p => p.__mpg_groups);
+  if (idx >= 0) cfg.splice(idx, 1);
+  // Only embed if there are groups defined
+  if (groups.length > 0) {
+    cfg.push({ __mpg_groups: groups });
+  }
+}
+
+function cfgForExport() {
+  // Return a copy with the sentinel embedded
+  const copy = cfg.filter(p => !p.__mpg_groups).map(p => JSON.parse(JSON.stringify(p)));
+  if (groups.length > 0) copy.push({ __mpg_groups: groups });
+  return copy;
+}
+
+function getGroups()    { return groups; }
+function groupById(id)  { return groups.find(g => g.id === id); }
+function getGroup(p)    { return p._group || ''; }
+function setGroup(p,id) { if (id) p._group = id; else delete p._group; }
+
+// ===================== SIDEBAR =====================
+function renderSidebar() {
+  const el = document.getElementById('point-list'); el.innerHTML='';
+  if (!cfg) return;
+  const grps   = getGroups();
+  const points  = cfg.filter(p => !p.__mpg_groups); // exclude sentinel
+  const buckets = {}, ungrouped = [];
+  points.forEach((p,i) => {
+    const gid = getGroup(p), grp = gid && groupById(gid);
+    if (grp) { if (!buckets[gid]) buckets[gid]=[]; buckets[gid].push(i); }
+    else ungrouped.push(i);
+  });
+
+  // Render group folders
+  grps.forEach(grp => {
+    const members = buckets[grp.id] || [];
+    const isOpen  = !collapsedGrps.has(grp.id);
+    const folder  = document.createElement('div');
+    folder.className = 'grp-folder';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'grp-folder-hdr';
+    hdr.innerHTML = `
+      <span class="grp-icon ${isOpen?'open':''}">▶</span>
+      <span class="grp-dot" style="background:${grp.color}"></span>
+      <span class="grp-name">${grp.name}</span>
+      <span class="grp-count">${members.length}</span>
+      <span class="grp-actions" onclick="event.stopPropagation()">
+        <button class="grp-act-btn" onclick="renameGroup('${grp.id}')" title="Rename">✎</button>
+        <button class="grp-act-btn del" onclick="deleteGroup('${grp.id}')" title="Delete">✕</button>
+      </span>`;
+    hdr.addEventListener('click', () => toggleGrpFolder(grp.id));
+    hdr.addEventListener('dragover', e => { if(draggedIdx===null)return; e.preventDefault(); hdr.classList.add('drag-over'); if(collapsedGrps.has(grp.id)){collapsedGrps.delete(grp.id);renderSidebar();} });
+    hdr.addEventListener('dragleave', e => { if(!hdr.contains(e.relatedTarget)) hdr.classList.remove('drag-over'); });
+    hdr.addEventListener('drop', e => { e.preventDefault(); hdr.classList.remove('drag-over'); if(draggedIdx!==null) dropPointIntoGroup(draggedIdx, grp.id); });
+
+    const body = document.createElement('div');
+    body.className = 'grp-points' + (isOpen?' open':'');
+    body.id = `grp-body-${grp.id}`;
+    body.addEventListener('dragover', e => { if(draggedIdx===null)return; e.preventDefault(); body.classList.add('drag-over-zone'); });
+    body.addEventListener('dragleave', e => { if(!body.contains(e.relatedTarget)) body.classList.remove('drag-over-zone'); });
+    body.addEventListener('drop', e => { e.preventDefault(); body.classList.remove('drag-over-zone'); if(draggedIdx!==null) dropPointIntoGroup(draggedIdx, grp.id); });
+
+    members.forEach(i => body.appendChild(makePointItem(points[i], i, grp.color)));
+    folder.appendChild(hdr); folder.appendChild(body);
+    el.appendChild(folder);
+  });
+
+  // Ungrouped section
+  if (ungrouped.length > 0 || groups.length > 0) {
+    if (groups.length > 0) {
+      const hdr = document.createElement('div');
+      hdr.className = 'ungrouped-hdr'; hdr.textContent = 'UNGROUPED';
+      hdr.addEventListener('dragover', e => { if(draggedIdx===null)return; e.preventDefault(); hdr.classList.add('drag-over'); });
+      hdr.addEventListener('dragleave', () => hdr.classList.remove('drag-over'));
+      hdr.addEventListener('drop', e => { e.preventDefault(); hdr.classList.remove('drag-over'); if(draggedIdx!==null) dropPointIntoGroup(draggedIdx, ''); });
+      el.appendChild(hdr);
+    }
+    ungrouped.forEach(i => el.appendChild(makePointItem(points[i], i, null)));
+  }
+}
+
+function makePointItem(p, i, groupColor) {
+  const d = document.createElement('div');
+  d.className = 'point-item' + (i===selIdx?' active':'');
+  d.draggable = true;
+  d.dataset.idx = i;
+
+  const dis   = p.isDisabled ? '<span class="ptag red">DISABLED</span>' : '';
+  const dbg   = p.isDebugEnabled ? '<span class="ptag amber">DEBUG</span>' : '';
+  const spawn = (p.spawnList||[]).length;
+  const shape = p.triggerWidthX&&p.triggerWidthY?'CUBE':p.triggerHeight?'CYLINDER':'SPHERE';
+  const shCls = shape==='SPHERE'?'cyan':shape==='CYLINDER'?'blue':'amber';
+
+  d.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:4px;">
+      <span class="drag-handle" title="Drag to group">⠿</span>
+      <div style="flex:1;min-width:0;">
+        <div class="point-name">#${p.pointId} · ${p._label || p.notificationTitle || 'Unnamed'}</div>
+        ${p._label ? `<div class="label-badge">${p.notificationTitle||''}</div>` : ''}
+        <div class="point-meta">
+          <span class="ptag ${shCls}">${shape}</span>
+          <span class="ptag">${spawn} SPAWNS</span>
+          ${dbg}${dis}
+        </div>
+      </div>
+    </div>`;
+
+  if (groupColor) d.style.borderLeft = `3px solid ${i===selIdx?'var(--blue)':groupColor}`;
+  d.addEventListener('click', () => selectPoint(i));
+  d.addEventListener('dragstart', e => { draggedIdx=i; d.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',String(i)); });
+  d.addEventListener('dragend',   () => { draggedIdx=null; d.classList.remove('dragging'); document.querySelectorAll('.drag-over,.drag-over-zone').forEach(el=>el.classList.remove('drag-over','drag-over-zone')); });
+  return d;
+}
+
+function toggleGrpFolder(gid) {
+  if (collapsedGrps.has(gid)) collapsedGrps.delete(gid); else collapsedGrps.add(gid);
+  renderSidebar();
+}
+
+function dropPointIntoGroup(ptIdx, gid) {
+  const grp = gid && groupById(gid);
+  setGroup(cfg[ptIdx], gid);
+  markMod(`Point #${cfg[ptIdx].pointId} → group "${grp?grp.name:'ungrouped'}"`);
+  renderSidebar();
+  if (selIdx === ptIdx) showEditor(ptIdx);
+}
+
+function selectPoint(i) { selIdx=i; renderSidebar(); showEditor(i); }
+
+// ===================== GROUP MANAGEMENT =====================
+function showGroupModal() {
+  if (!cfg) return;
+  renderGrpModalList(); renderGrpColorPicker();
+  document.getElementById('grp-modal').classList.add('show');
+}
+
+function renderGrpColorPicker() {
+  const el = document.getElementById('grp-color-picker'); if(!el) return;
+  el.innerHTML = GROUP_COLORS.map(c => `
+    <div class="color-swatch ${c===selectedNewGrpColor?'sel':''}"
+      style="background:${c}" onclick="selectGrpColor('${c}')"></div>`).join('');
+}
+
+function selectGrpColor(c) { selectedNewGrpColor=c; renderGrpColorPicker(); }
+
+function renderGrpModalList() {
+  const el = document.getElementById('grp-list-ui'); if(!el) return;
+  const groups = getGroups();
+  if (!groups.length) { el.innerHTML='<div style="font-size:10px;color:var(--text-dim);padding:8px 0;">No groups yet.</div>'; return; }
+  el.innerHTML = groups.map(g => {
+    const count = (cfg||[]).filter(p=>getGroup(p)===g.id).length;
+    return `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="width:13px;height:13px;background:${g.color};flex-shrink:0;"></div>
+      <span style="flex:1;font-size:11px;color:var(--text-bright);">${g.name}</span>
+      <span style="font-size:9px;color:var(--text-dim);">${count} point${count!==1?'s':''}</span>
+      <button class="grp-act-btn" onclick="renameGroupInModal('${g.id}')">✎</button>
+      <button class="grp-act-btn del" onclick="deleteGroup('${g.id}');renderGrpModalList()">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function createGroup() {
+  const nameEl = document.getElementById('new-grp-name');
+  const name = nameEl.value.trim(); if(!name){nameEl.focus();return;}
+  const id = 'g_' + Date.now();
+  groups.push({id, name, color: selectedNewGrpColor});
+  nameEl.value='';
+  selectedNewGrpColor = GROUP_COLORS[Math.floor(Math.random()*GROUP_COLORS.length)];
+  markMod(`Created group "${name}"`);
+  renderGrpModalList(); renderGrpColorPicker(); renderSidebar();
+  if (selIdx>=0) showEditor(selIdx);
+}
+
+function deleteGroup(gid) {
+  const grp = groupById(gid);
+  const input = prompt(`Type DELETE to confirm removing group "${grp?grp.name:gid}" (points will become ungrouped)`);
+  if (input === null || input.trim().toUpperCase() !== 'DELETE') return;
+  groups = groups.filter(g=>g.id!==gid);
+  (cfg||[]).forEach(p=>{ if(getGroup(p)===gid) delete p._group; });
+  collapsedGrps.delete(gid);
+  markMod(`Deleted group "${grp?grp.name:gid}"`);
+  renderSidebar(); if(selIdx>=0) showEditor(selIdx);
+}
+
+function renameGroup(gid) {
+  const g = groupById(gid); if(!g) return;
+  const name = prompt('Rename group:',g.name);
+  if (name&&name.trim()) {
+    const old=g.name; g.name=name.trim();
+    markMod(`Renamed group "${old}" → "${g.name}"`);
+    renderSidebar(); if(selIdx>=0) showEditor(selIdx);
+  }
+}
+
+function renameGroupInModal(gid) { renameGroup(gid); renderGrpModalList(); }
+
+function groupChange(i, gid) {
+  setGroup(cfg[i], gid);
+  const grp = gid&&groupById(gid);
+  markMod(`Point #${cfg[i].pointId} assigned to "${grp?grp.name:'none'}"`);
+  renderSidebar();
+  // Update select border color
+  const sel = document.querySelector('#point-editor select[onchange^="groupChange"]');
+  if (sel) sel.style.borderColor = grp ? grp.color : 'var(--border)';
+}
+
+// ===================== EDITOR BUILD =====================
+function showEditor(i) {
+  const p=cfg[i];
+  document.getElementById('no-sel').style.display='none';
+  const ed=document.getElementById('point-editor');
+  ed.style.display='block';
+  ed.innerHTML=buildEditor(p,i);
+}
+
+function buildEditor(p,i) {
+  const colorOpts=DEBUG_COLORS.map(c=>`<option value="${c}" ${p.triggerDebugColor===c?'selected':''}>${c}</option>`).join('');
+  const iconOpts=NOTIF_ICONS.map(c=>`<option value="${c}" ${p.notificationIcon===c?'selected':''}>${c}</option>`).join('');
+  const spawnListHTML=(p.spawnList||[]).map((s,si)=>`
+    <div class="spawn-entry">
+      <div class="ac-wrap">
+        <input class="ac-input" type="text" id="sl-${i}-${si}"
+          value="${esc(s)}"
+          oninput="spawnChange(${i},${si},this.value);acInput(this,'sl-drop-${i}-${si}')"
+          onkeydown="acKeydown(event,'sl-drop-${i}-${si}',${i},${si})"
+          onfocus="acInput(this,'sl-drop-${i}-${si}')"
+          onblur="setTimeout(()=>acHide('sl-drop-${i}-${si}'),300)"
+          placeholder="ClassName or ClassName|chance|lifetime|count|health" autocomplete="off">
+        <div class="ac-drop" id="sl-drop-${i}-${si}"></div>
+      </div>
+      <button class="spawn-del" onclick="spawnDel(${i},${si})">✕</button>
+    </div>`).join('');
+  const spawnPosHTML=(p.spawnPositions||[]).map((s,si)=>`
+    <div class="spawn-entry">
+      <input type="text" value="${esc(s)}" oninput="spawnPosChange(${i},${si},this.value)" placeholder="X Y Z or X Y Z|rotX rotY rotZ">
+      <button class="spawn-del" onclick="spawnPosDel(${i},${si})">✕</button>
+    </div>`).join('');
+  const depsHTML=(p.triggerDependencies||[]).map((v,di)=>`
+    <div class="spawn-entry">
+      <input type="number" value="${v}" oninput="depsChange(${i},${di},this.value)" placeholder="Point ID">
+      <button class="spawn-del" onclick="depsDel(${i},${di})">✕</button>
+    </div>`).join('');
+
+  // trigger enable lists
+  const mkEnableList=(key,label)=>{
+    const arr=p[key]||[];
+    return `<div class="field">
+      <label>${label}</label>
+      ${arr.map((v,ei)=>`<div class="spawn-entry">
+        <input type="number" value="${v}" oninput="enableListChange(${i},'${key}',${ei},this.value)" placeholder="Point ID">
+        <button class="spawn-del" onclick="enableListDel(${i},'${key}',${ei})">✕</button>
+      </div>`).join('')}
+      <button class="add-entry" onclick="enableListAdd(${i},'${key}')">+ ADD ID</button>
+    </div>`;
+  };
+
+  const mappingHTML=buildMappingHTML(p,i);
+
+  return `
+  <div class="point-hdr">
+    <div class="point-hdr-id">#${String(p.pointId).padStart(2,'0')}</div>
+    <div style="min-width:0;flex:1;">
+      <div class="point-hdr-title">${p._label || p.notificationTitle || 'Unnamed Point'}</div>
+      ${p._label ? `<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">${p.notificationTitle||''}</div>` : ''}
+      <div class="point-hdr-sub">POINT CONFIG · SLOT ${i+1} OF ${cfg.length}</div>
+    </div>
+  </div>
+
+  <!-- IDENTITY -->
+  <div class="section">
+    <div class="section-hdr" onclick="toggleSec(this)">⬡ IDENTITY <span class="chev open">▾</span></div>
+    <div class="section-body">
+      <div class="field" style="margin-bottom:12px;">
+        <label>Label / Note <span style="color:var(--amber);font-size:8px;margin-left:6px;letter-spacing:1px;">SAVED IN FILE — IGNORED BY MOD</span></label>
+        <div class="hint" style="margin-bottom:5px;">A human-readable note for your own reference, e.g. "North gate bear spawn" or "DNA room entrance trigger"</div>
+        <div class="label-input-wrap">
+          <input type="text" placeholder='e.g. "North gate bear spawn"'
+            value="${esc(p._label||'')}"
+            oninput="labelChange(${i},this.value)"
+            style="border-color:${p._label?'var(--amber)':'var(--border)'}">
+          ${p._label ? `<button class="label-clear" onclick="labelChange(${i},'');this.closest('.label-input-wrap').querySelector('input').value=''" title="Clear">✕</button>` : ''}
+        </div>
+      </div>
+      <div class="fg3" style="margin-bottom:10px;">
+        <div class="field">
+          <label>Point ID</label>
+          <input type="number" value="${p.pointId}" oninput="fc(${i},'pointId',parseInt(this.value)||1)">
+          <div class="hint">Must be unique across all files</div>
+        </div>
+        <div class="field fwide">
+          <label>Title (notificationTitle)</label>
+          <input type="text" value="${esc(p.notificationTitle||'')}" oninput="fc(${i},'notificationTitle',this.value)">
+          <div class="hint">Used in logs and notification header</div>
+        </div>
+      </div>
+      <div class="fg3">
+        <div class="toggle-row">
+          <span class="toggle-label">Debug Enabled</span>
+          <label class="toggle"><input type="checkbox" ${p.isDebugEnabled?'checked':''} onchange="fc(${i},'isDebugEnabled',this.checked?1:0)"><div class="toggle-track"></div></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Disabled</span>
+          <label class="toggle"><input type="checkbox" ${p.isDisabled?'checked':''} onchange="fc(${i},'isDisabled',this.checked?1:0)"><div class="toggle-track"></div></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Show Visualisation</span>
+          <label class="toggle"><input type="checkbox" ${p.showVisualisation?'checked':''} onchange="fc(${i},'showVisualisation',this.checked?1:0)"><div class="toggle-track"></div></label>
+        </div>
+      </div>
+      <hr class="sep">
+      <div class="field">
+        <label>Group <span style="color:var(--text-dim);font-size:8px;margin-left:6px;letter-spacing:1px;">SAVED IN FILE — IGNORED BY MOD</span></label>
+        <select onchange="groupChange(${i},this.value)" style="border-color:${getGroup(p)?(groupById(getGroup(p))?groupById(getGroup(p)).color:'var(--border)'):'var(--border)'}">
+          <option value="">— No Group —</option>
+          ${getGroups().map(g=>`<option value="${g.id}" ${getGroup(p)===g.id?'selected':''}>${g.name}</option>`).join('')}
+        </select>
+        ${!getGroups().length?`<div class="hint">No groups yet — use <strong style="color:var(--blue-dim)">MANAGE GROUPS</strong> in the sidebar.</div>`:''}
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div class="section">
+    <div class="section-hdr" onclick="toggleSec(this)">⬡ NOTIFICATIONS <span class="chev open">▾</span></div>
+    <div class="section-body">
+      <div class="fg2" style="margin-bottom:10px;">
+        <div class="field">
+          <label>Notification Icon</label>
+          <select onchange="fc(${i},'notificationIcon',this.value)">
+            ${iconOpts}
+            ${!NOTIF_ICONS.includes(p.notificationIcon)?`<option value="${esc(p.notificationIcon)}" selected>${esc(p.notificationIcon)}</option>`:''}
+          </select>
+        </div>
+        <div class="field">
+          <label>Display Time (seconds)</label>
+          <input type="number" value="${p.notificationTime||8}" min="1" oninput="fc(${i},'notificationTime',parseInt(this.value))">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>On Enter</label>
+        <textarea oninput="fc(${i},'notificationTextEnter',this.value)">${esc(p.notificationTextEnter||'')}</textarea>
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>On Exit</label>
+        <textarea oninput="fc(${i},'notificationTextExit',this.value)">${esc(p.notificationTextExit||'')}</textarea>
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>On Spawn</label>
+        <textarea oninput="fc(${i},'notificationTextSpawn',this.value)">${esc(p.notificationTextSpawn||'')}</textarea>
+        <div class="hint">Use %1 (count), %2/%3 (declined words). Parts separated by ;</div>
+      </div>
+      <div class="field">
+        <label>On Win (all killed)</label>
+        <textarea oninput="fc(${i},'notificationTextWin',this.value)">${esc(p.notificationTextWin||'')}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRIGGER SHAPE & POSITION -->
+  <div class="section">
+    <div class="section-hdr" onclick="toggleSec(this)">⬡ TRIGGER SHAPE &amp; POSITION <span class="chev open">▾</span></div>
+    <div class="section-body">
+      <div class="fg2" style="margin-bottom:10px;">
+        <div class="field fwide">
+          <label>Position (X Y Z or X Y Z|rotX rotY rotZ)</label>
+          <input type="text" value="${esc(p.triggerPosition||'')}" oninput="fc(${i},'triggerPosition',this.value)" placeholder="4246.0 333.7 5586.7">
+          <div class="hint">Set Y to 0 to auto-place on ground. Append |45 0 0 to rotate (cube only).</div>
+        </div>
+      </div>
+      <div class="fg4" style="margin-bottom:10px;">
+        <div class="field">
+          <label>Radius (m)</label>
+          <input type="text" value="${esc(p.triggerRadius||'50.0')}" oninput="fc(${i},'triggerRadius',this.value)" placeholder="50.0 or 5-20">
+          <div class="hint">Sphere / cylinder</div>
+        </div>
+        <div class="field">
+          <label>Height (m)</label>
+          <input type="text" value="${esc(p.triggerHeight||'')}" oninput="fc(${i},'triggerHeight',this.value)" placeholder="leave empty = sphere">
+          <div class="hint">Set for cylinder/cube</div>
+        </div>
+        <div class="field">
+          <label>Width X (m)</label>
+          <input type="text" value="${esc(p.triggerWidthX||'')}" oninput="fc(${i},'triggerWidthX',this.value)" placeholder="cube only">
+        </div>
+        <div class="field">
+          <label>Width Y (m)</label>
+          <input type="text" value="${esc(p.triggerWidthY||'')}" oninput="fc(${i},'triggerWidthY',this.value)" placeholder="cube only">
+          <div class="hint">Set X+Y → cube, overrides radius</div>
+        </div>
+      </div>
+      <div class="fg2">
+        <div class="field">
+          <label>Debug Color</label>
+          <select onchange="fc(${i},'triggerDebugColor',this.value)">${colorOpts}</select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRIGGER TIMING -->
+  <div class="section">
+    <div class="section-hdr" onclick="toggleSec(this)">⬡ TRIGGER TIMING &amp; BEHAVIOUR <span class="chev open">▾</span></div>
+    <div class="section-body">
+      <div class="fg4" style="margin-bottom:10px;">
+        <div class="field">
+          <label>First Delay (sec)</label>
+          <input type="text" value="${esc(p.triggerFirstDelay||'0')}" oninput="fc(${i},'triggerFirstDelay',this.value)" placeholder="10-15">
+          <div class="hint">Recommend 180-300s</div>
+        </div>
+        <div class="field">
+          <label>Cooldown (sec)</label>
+          <input type="text" value="${esc(p.triggerCooldown||'60')}" oninput="fc(${i},'triggerCooldown',this.value)" placeholder="60-70">
+        </div>
+        <div class="field">
+          <label>Enter Delay (sec)</label>
+          <input type="number" value="${p.triggerEnterDelay||0}" min="0" oninput="fc(${i},'triggerEnterDelay',parseInt(this.value))">
+        </div>
+        <div class="field">
+          <label>Safe Distance (m)</label>
+          <input type="number" value="${p.triggerSafeDistance||0}" min="0" step="0.5" oninput="fc(${i},'triggerSafeDistance',parseFloat(this.value))">
+          <div class="hint">Min spawn dist from player on enter</div>
+        </div>
+      </div>
+      <div class="fg4" style="margin-bottom:10px;">
+        <div class="field">
+          <label>Working Time</label>
+          <input type="text" value="${esc(p.triggerWorkingTime||'0-24')}" oninput="fc(${i},'triggerWorkingTime',this.value)" placeholder="0-24">
+          <div class="hint">In-game hours (0-24)</div>
+        </div>
+        <div class="field">
+          <label>Cleanup Delay (sec)</label>
+          <input type="number" value="${p.triggerCleanupDelay||0}" min="0" oninput="fc(${i},'triggerCleanupDelay',parseInt(this.value))">
+        </div>
+        <div class="field">
+          <label>Inactive Reset (sec)</label>
+          <input type="number" value="${p.triggerInactiveResetDelay||0}" min="0" oninput="fc(${i},'triggerInactiveResetDelay',parseInt(this.value))">
+          <div class="hint">Reset if no damage taken</div>
+        </div>
+      </div>
+      <hr class="sep">
+      <div class="fg3">
+        <div class="toggle-row"><span class="toggle-label">Cleanup On Leave</span><label class="toggle"><input type="checkbox" ${p.triggerCleanupOnLeave?'checked':''} onchange="fc(${i},'triggerCleanupOnLeave',this.checked?1:0)"><div class="toggle-track"></div></label></div>
+        <div class="toggle-row"><span class="toggle-label">Cleanup On Schedule End</span><label class="toggle"><input type="checkbox" ${p.triggerCleanupOnLunchTime?'checked':''} onchange="fc(${i},'triggerCleanupOnLunchTime',this.checked?1:0)"><div class="toggle-track"></div></label></div>
+        <div class="toggle-row"><span class="toggle-label">Immersive Cleanup</span><label class="toggle"><input type="checkbox" ${p.triggerCleanupImmersive?'checked':''} onchange="fc(${i},'triggerCleanupImmersive',this.checked?1:0)"><div class="toggle-track"></div></label></div>
+        <div class="toggle-row"><span class="toggle-label">Disable On Win</span><label class="toggle"><input type="checkbox" ${p.triggerDisableOnWin?'checked':''} onchange="fc(${i},'triggerDisableOnWin',this.checked?1:0)"><div class="toggle-track"></div></label></div>
+        <div class="toggle-row"><span class="toggle-label">Disable On Leave</span><label class="toggle"><input type="checkbox" ${p.triggerDisableOnLeave?'checked':''} onchange="fc(${i},'triggerDisableOnLeave',this.checked?1:0)"><div class="toggle-track"></div></label></div>
+        <div class="toggle-row"><span class="toggle-label">Any Dependency Sufficient</span><label class="toggle"><input type="checkbox" ${p.triggerDependenciesAnyOf?'checked':''} onchange="fc(${i},'triggerDependenciesAnyOf',this.checked?1:0)"><div class="toggle-track"></div></label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEPENDENCIES & ENABLE CHAINS -->
+  <div class="section">
+    <div class="section-hdr" onclick="toggleSec(this)">⬡ DEPENDENCIES &amp; TRIGGER CHAINS <span class="chev open">▾</span></div>
+    <div class="section-body">
+      <div class="fg2">
+        <div class="field">
+          <label>Trigger Dependencies</label>
+          <div class="hint" style="margin-bottom:6px;">This point won't fire until these IDs have fired</div>
+          ${depsHTML}
+          <button class="add-entry" onclick="depsAdd(${i})">+ ADD DEPENDENCY ID</button>
+        </div>
+        ${mkEnableList('triggersToEnableOnEnter','Enable On Enter')}
+        ${mkEnableList('triggersToEnableOnFirstSpawn','Enable On First Spawn')}
+        ${mkEnableList('triggersToEnableOnWin','Enable On Win')}
+        ${mkEnableList('triggersToEnableOnLeave','Enable On Leave')}
+      </div>
+    </div>
+  </div>
+
+  <!-- SPAWN SETTINGS -->
+  <div class="section">
+    <div class="section-hdr" onclick="toggleSec(this)">⬡ SPAWN SETTINGS <span class="chev open">▾</span></div>
+    <div class="section-body">
+      <div class="fg4" style="margin-bottom:12px;">
+        <div class="field">
+          <label>Min Spawn</label>
+          <input type="number" value="${p.spawnMin??2}" min="0" oninput="fc(${i},'spawnMin',parseInt(this.value))">
+        </div>
+        <div class="field">
+          <label>Max Spawn</label>
+          <input type="number" value="${p.spawnMax??5}" min="1" oninput="fc(${i},'spawnMax',parseInt(this.value))">
+        </div>
+        <div class="field">
+          <label>Count Limit</label>
+          <input type="number" value="${p.spawnCountLimit??30}" min="0" oninput="fc(${i},'spawnCountLimit',parseInt(this.value))">
+          <div class="hint">Max alive at once</div>
+        </div>
+        <div class="field">
+          <label>Spawn Radius (m)</label>
+          <input type="number" value="${p.spawnRadius??10}" min="0" step="0.5" oninput="fc(${i},'spawnRadius',parseFloat(this.value))">
+        </div>
+        <div class="field">
+          <label>Queue Delay (ms)</label>
+          <input type="number" value="${p.spawnQueueDelay??0}" min="0" oninput="fc(${i},'spawnQueueDelay',parseInt(this.value))">
+          <div class="hint">Stagger each spawn</div>
+        </div>
+        <div class="field">
+          <label>Clear Dead Animals (sec)</label>
+          <input type="number" value="${p.clearDeathAnimals??0}" min="0" oninput="fc(${i},'clearDeathAnimals',parseInt(this.value))">
+        </div>
+        <div class="field">
+          <label>Clear Dead Zombies (sec)</label>
+          <input type="number" value="${p.clearDeathZombies??0}" min="0" oninput="fc(${i},'clearDeathZombies',parseInt(this.value))">
+        </div>
+        <div class="field" style="justify-content:flex-end;">
+          <div class="toggle-row"><span class="toggle-label">Loop Inside</span><label class="toggle"><input type="checkbox" ${p.spawnLoopInside?'checked':''} onchange="fc(${i},'spawnLoopInside',this.checked?1:0)"><div class="toggle-track"></div></label></div>
+        </div>
+      </div>
+      <hr class="sep">
+      <div class="field" style="margin-bottom:10px;">
+        <label>Spawn Positions</label>
+        <div class="hint" style="margin-bottom:6px;">X Y Z — use 0 for Y to auto-place on ground. Append |rotX rotY rotZ to rotate.</div>
+        ${spawnPosHTML}
+        <button class="add-entry" onclick="spawnPosAdd(${i})">+ ADD POSITION</button>
+      </div>
+      <hr class="sep">
+      <div class="field">
+        <label>Spawn List</label>
+        <div class="hint" style="margin-bottom:6px;">ClassName or ClassName|chance|lifetime|count|health|foodStage — use -1=max, -2=random, -3=default</div>
+        ${spawnListHTML}
+        <button class="add-entry" onclick="spawnAdd(${i})">+ ADD ENTITY</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAPPING DATA -->
+  <div class="section">
+    <div class="section-hdr" onclick="toggleSec(this)">⬡ MAPPING DATA <span class="chev open">▾</span></div>
+    <div class="section-body">
+      <div class="hint" style="margin-bottom:12px;">Map objects spawned/removed on trigger events. Structure matches vanilla DayZ json spawner.</div>
+      ${mappingHTML}
+      <button class="add-entry" onclick="addMappingBlock(${i})">+ ADD MAPPING BLOCK</button>
+    </div>
+  </div>
+
+  <!-- DANGER ZONE -->
+  <div class="section" style="border-color:#7f1d1d;">
+    <div class="section-hdr" style="background:rgba(239,68,68,.05);border-color:#7f1d1d;color:#fca5a5;" onclick="toggleSec(this)">⚠ DANGER ZONE <span class="chev open">▾</span></div>
+    <div class="section-body">
+      <div class="danger-zone"><div class="danger-text">Duplicate this point</div><button class="btn btn-amber" onclick="dupPoint(${i})">⎘ DUPLICATE</button></div>
+      <div class="danger-zone"><div class="danger-text">Delete this point permanently</div><button class="btn btn-red" onclick="delPoint(${i})">✕ DELETE</button></div>
+    </div>
+  </div>
+  <div style="height:40px;"></div>`;
+}
+
+// ===================== MAPPING HTML =====================
+function buildMappingHTML(p,i) {
+  const blocks=(p.mappingData||[]);
+  if(!blocks.length) return '<div style="font-size:10px;color:var(--text-dim);padding:8px 0;">No mapping blocks.</div>';
+  return blocks.map((b,bi)=>{
+    const objs=(b.mappingObjects||[]).map((o,oi)=>`
+      <div class="mapping-object">
+        <div class="mapping-object-hdr">
+          <span>Object #${oi+1}</span>
+          <button class="btn btn-red" style="font-size:9px;padding:2px 7px;" onclick="mapObjDel(${i},${bi},${oi})">✕</button>
+        </div>
+        <div class="fg3">
+          <div class="field fwide"><label>Class Name</label><input type="text" value="${esc(o.name||'')}" oninput="mapObjField(${i},${bi},${oi},'name',this.value)"></div>
+          <div class="field"><label>Pos X</label><input type="number" step="0.001" value="${o.pos?.[0]??0}" oninput="mapObjVec(${i},${bi},${oi},'pos',0,this.value)"></div>
+          <div class="field"><label>Pos Y</label><input type="number" step="0.001" value="${o.pos?.[1]??0}" oninput="mapObjVec(${i},${bi},${oi},'pos',1,this.value)"></div>
+          <div class="field"><label>Pos Z</label><input type="number" step="0.001" value="${o.pos?.[2]??0}" oninput="mapObjVec(${i},${bi},${oi},'pos',2,this.value)"></div>
+          <div class="field"><label>Yaw</label><input type="number" step="0.001" value="${o.ypr?.[0]??0}" oninput="mapObjVec(${i},${bi},${oi},'ypr',0,this.value)"></div>
+          <div class="field"><label>Pitch</label><input type="number" step="0.001" value="${o.ypr?.[1]??0}" oninput="mapObjVec(${i},${bi},${oi},'ypr',1,this.value)"></div>
+          <div class="field"><label>Roll</label><input type="number" step="0.001" value="${o.ypr?.[2]??0}" oninput="mapObjVec(${i},${bi},${oi},'ypr',2,this.value)"></div>
+          <div class="field"><label>Scale</label><input type="number" step="0.1" value="${o.scale??1}" oninput="mapObjField(${i},${bi},${oi},'scale',parseFloat(this.value))"></div>
+          <div class="field" style="justify-content:flex-end;"><div class="toggle-row"><span class="toggle-label">CE Persist</span><label class="toggle"><input type="checkbox" ${o.enableCEPersistency?'checked':''} onchange="mapObjField(${i},${bi},${oi},'enableCEPersistency',this.checked?1:0)"><div class="toggle-track"></div></label></div></div>
+        </div>
+      </div>`).join('');
+    const chk=(k,v)=>`<input type="checkbox" ${b[k]?'checked':''} onchange="mapBlockField(${i},${bi},'${k}',this.checked?1:0)" style="width:auto;padding:0;border:none;accent-color:var(--blue);">`;
+    return `<div class="mapping-block">
+      <div class="mapping-block-hdr">
+        <span class="mapping-block-title">BLOCK #${bi+1}</span>
+        <button class="btn btn-red" style="font-size:9px;padding:2px 7px;" onclick="mapBlockDel(${i},${bi})">✕ REMOVE</button>
+      </div>
+      <div class="fg4" style="margin-bottom:10px;">
+        <div class="field"><label>Add Delay (s)</label><input type="number" step="0.1" value="${b.addDelay??0}" oninput="mapBlockField(${i},${bi},'addDelay',parseFloat(this.value))"></div>
+        <div class="field"><label>Remove Delay (s)</label><input type="number" step="0.1" value="${b.removeDelay??0}" oninput="mapBlockField(${i},${bi},'removeDelay',parseFloat(this.value))"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:10px;color:var(--text-dim);margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0;">${chk('addOnStartup')} Add On Startup</label>
+        <label style="display:flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0;">${chk('addOnEnter')} Add On Enter</label>
+        <label style="display:flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0;">${chk('addOnFirstSpawn')} Add On 1st Spawn</label>
+        <label style="display:flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0;">${chk('addOnWin')} Add On Win</label>
+        <label style="display:flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0;">${chk('removeOnEnter')} Remove On Enter</label>
+        <label style="display:flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0;">${chk('removeOnFirstSpawn')} Remove On 1st Spawn</label>
+        <label style="display:flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0;">${chk('removeOnWin')} Remove On Win</label>
+      </div>
+      <div class="mapping-objects-list">${objs}</div>
+      <button class="add-entry" onclick="mapObjAdd(${i},${bi})">+ ADD OBJECT</button>
+    </div>`;
+  }).join('');
+}
+
+// ===================== FIELD HELPERS =====================
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function labelChange(i, val) {
+  const trimmed = val.trim();
+  if (trimmed) cfg[i]._label = trimmed; else delete cfg[i]._label;
+  markMod(`Point #${cfg[i].pointId}: label`);
+  // Live-update header title and input border
+  const titleEl = document.querySelector('.point-hdr-title');
+  if (titleEl) titleEl.textContent = trimmed || cfg[i].notificationTitle || 'Unnamed Point';
+  const inp = document.querySelector('#point-editor .label-input-wrap input');
+  if (inp) inp.style.borderColor = trimmed ? 'var(--amber)' : 'var(--border)';
+  renderSidebar();
+}
+
+function fc(i,k,v) {
+  cfg[i][k]=v; markMod(`Point #${cfg[i].pointId}: ${k}`);
+  if(k==='notificationTitle'||k==='pointId'||k==='isDisabled'||k==='isDebugEnabled') renderSidebar();
+  if(k==='notificationTitle'||k==='pointId') {
+    const th=document.querySelector('.point-hdr-title');
+    if(th) th.textContent = cfg[i]._label || v || 'Unnamed Point';
+  }
+}
+function spawnChange(i,si,v) { cfg[i].spawnList[si]=v; markMod(`Point #${cfg[i].pointId}: spawnList`); }
+function spawnDel(i,si) { cfg[i].spawnList.splice(si,1); markMod(`Point #${cfg[i].pointId}: spawnList del`); showEditor(i); }
+function spawnAdd(i) { if(!cfg[i].spawnList)cfg[i].spawnList=[]; cfg[i].spawnList.push(''); markMod(`Point #${cfg[i].pointId}: spawnList add`); showEditor(i); }
+function spawnPosChange(i,si,v) { cfg[i].spawnPositions[si]=v; markMod(`Point #${cfg[i].pointId}: spawnPositions`); }
+function spawnPosDel(i,si) { cfg[i].spawnPositions.splice(si,1); markMod(`Point #${cfg[i].pointId}: spawnPositions del`); showEditor(i); }
+function spawnPosAdd(i) { if(!cfg[i].spawnPositions)cfg[i].spawnPositions=[]; cfg[i].spawnPositions.push('0 0 0'); markMod(`Point #${cfg[i].pointId}: spawnPositions add`); showEditor(i); }
+function depsChange(i,di,v) { cfg[i].triggerDependencies[di]=parseInt(v)||0; markMod(`Point #${cfg[i].pointId}: deps`); }
+function depsDel(i,di) { cfg[i].triggerDependencies.splice(di,1); markMod(`Point #${cfg[i].pointId}: deps del`); showEditor(i); }
+function depsAdd(i) { if(!cfg[i].triggerDependencies)cfg[i].triggerDependencies=[]; cfg[i].triggerDependencies.push(0); markMod(`Point #${cfg[i].pointId}: deps add`); showEditor(i); }
+function enableListChange(i,k,ei,v) { cfg[i][k][ei]=parseInt(v)||0; markMod(`Point #${cfg[i].pointId}: ${k}`); }
+function enableListDel(i,k,ei) { cfg[i][k].splice(ei,1); markMod(`Point #${cfg[i].pointId}: ${k} del`); showEditor(i); }
+function enableListAdd(i,k) { if(!cfg[i][k])cfg[i][k]=[]; cfg[i][k].push(0); markMod(`Point #${cfg[i].pointId}: ${k} add`); showEditor(i); }
+
+// Mapping helpers
+function mapBlockField(i,bi,k,v) { cfg[i].mappingData[bi][k]=v; markMod(`Point #${cfg[i].pointId}: mapping`); }
+function mapBlockDel(i,bi) { cfg[i].mappingData.splice(bi,1); markMod(`Point #${cfg[i].pointId}: mapping del`); showEditor(i); }
+function addMappingBlock(i) {
+  if(!cfg[i].mappingData) cfg[i].mappingData=[];
+  cfg[i].mappingData.push({addOnStartup:0,addOnEnter:0,addOnFirstSpawn:0,addOnWin:0,addDelay:0,removeOnEnter:0,removeOnFirstSpawn:0,removeOnWin:0,removeDelay:0,mappingObjects:[]});
+  markMod(`Point #${cfg[i].pointId}: mapping add`); showEditor(i);
+}
+function mapObjField(i,bi,oi,k,v) { cfg[i].mappingData[bi].mappingObjects[oi][k]=v; markMod(`Point #${cfg[i].pointId}: map obj`); }
+function mapObjVec(i,bi,oi,k,ax,v) {
+  if(!cfg[i].mappingData[bi].mappingObjects[oi][k]) cfg[i].mappingData[bi].mappingObjects[oi][k]=[0,0,0];
+  cfg[i].mappingData[bi].mappingObjects[oi][k][ax]=parseFloat(v)||0; markMod(`Point #${cfg[i].pointId}: map obj vec`);
+}
+function mapObjAdd(i,bi) {
+  cfg[i].mappingData[bi].mappingObjects.push({name:'',pos:[0,0,0],ypr:[0,0,0],scale:1,enableCEPersistency:0});
+  markMod(`Point #${cfg[i].pointId}: map obj add`); showEditor(i);
+}
+function mapObjDel(i,bi,oi) { cfg[i].mappingData[bi].mappingObjects.splice(oi,1); markMod(`Point #${cfg[i].pointId}: map obj del`); showEditor(i); }
+
+// Section toggle
+function toggleSec(hdr) {
+  const body=hdr.nextElementSibling, chev=hdr.querySelector('.chev');
+  if(body.classList.contains('hidden')) { body.classList.remove('hidden'); chev.classList.add('open'); chev.textContent='▾'; }
+  else { body.classList.add('hidden'); chev.classList.remove('open'); chev.textContent='▸'; }
+}
+
+// ===================== POINT MGMT =====================
+function pointsCfg() { return cfg.filter(p => !p.__mpg_groups); }
+function nextId() {
+  const pts = pointsCfg();
+  if (!pts.length) return 1;
+  return Math.max(...pts.map(p => p.pointId||0)) + 1;
+}
+function addPoint() {
+  const id = nextId();
+  const newPt = {
+    pointId:id, isDebugEnabled:0, isDisabled:0, showVisualisation:0,
+    notificationTitle:`Point ${id}`,
+    notificationTextEnter:'', notificationTextExit:'', notificationTextSpawn:'', notificationTextWin:'',
+    notificationTime:8, notificationIcon:'set:dayz_gui image:iconSkull',
+    triggerDependencies:[], triggerDependenciesAnyOf:0,
+    triggersToEnableOnEnter:[], triggersToEnableOnFirstSpawn:[], triggersToEnableOnWin:[], triggersToEnableOnLeave:[],
+    triggerPosition:'0 0 0', triggerDebugColor:'blue',
+    triggerRadius:'50.0', triggerHeight:'', triggerWidthX:'', triggerWidthY:'',
+    triggerFirstDelay:'300', triggerCooldown:'60', triggerSafeDistance:0,
+    triggerEnterDelay:0, triggerCleanupOnLeave:0, triggerCleanupOnLunchTime:0,
+    triggerCleanupImmersive:0, triggerCleanupDelay:0, triggerInactiveResetDelay:0,
+    triggerWorkingTime:'0-24', triggerDisableOnWin:0, triggerDisableOnLeave:0,
+    spawnPositions:['0 0 0'], spawnRadius:10, spawnMin:1, spawnMax:3,
+    spawnCountLimit:10, spawnLoopInside:1, spawnQueueDelay:0,
+    spawnList:[], clearDeathAnimals:0, clearDeathZombies:0, mappingData:[]
+  };
+  // Insert before sentinel if present
+  const sentinelIdx = cfg.findIndex(p => p.__mpg_groups);
+  if (sentinelIdx >= 0) cfg.splice(sentinelIdx, 0, newPt);
+  else cfg.push(newPt);
+  selIdx = cfg.indexOf(newPt);
+  markMod(`Added Point #${id}`); refreshUI();
+}
+function dupPoint(i) {
+  const clone = JSON.parse(JSON.stringify(cfg[i]));
+  clone.pointId = nextId(); clone.notificationTitle = (clone.notificationTitle||'Point')+' (copy)';
+  cfg.splice(i+1, 0, clone); selIdx = i+1;
+  markMod(`Duplicated Point #${cfg[i].pointId}`); refreshUI();
+}
+function delPoint(i) {
+  const p = cfg[i];
+  const input = prompt(`Type DELETE to confirm removing Point #${p.pointId} "${p.notificationTitle||'Unnamed'}"`);
+  if (input === null || input.trim().toUpperCase() !== 'DELETE') return;
+  const id = p.pointId;
+  cfg.splice(i, 1);
+  const pts = pointsCfg();
+  selIdx = Math.min(selIdx, pts.length - 1);
+  if (!pts.length) selIdx = -1;
+  markMod(`Deleted Point #${id}`);
+  refreshUI();
+}
+
+// ===================== EXPORT =====================
+function showExport() {
+  if(!cfg){alert('No config loaded.');return;}
+  const exportData = cfgForExport();
+  console.log('EXPORT DEBUG - groups variable:', JSON.stringify(groups));
+  console.log('EXPORT DEBUG - exportData last item:', JSON.stringify(exportData[exportData.length-1]));
+  document.getElementById('json-out').value=JSON.stringify(exportData,null,2);
+  document.getElementById('export-modal').classList.add('show');
+}
+function copyJSON() {
+  const text = document.getElementById('json-out').value;
+  navigator.clipboard.writeText(text).catch(() => {
+    const ta = document.getElementById('json-out'); ta.select(); document.execCommand('copy');
+  });
+  const btn=document.getElementById('copy-btn'); btn.textContent='✓ COPIED'; btn.classList.add('copy-flash');
+  setTimeout(()=>{btn.textContent='⎘ COPY';btn.classList.remove('copy-flash');},1500);
+}
+function dlJSON() {
+  const json=document.getElementById('json-out').value;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+  a.download='PointConfig.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show');});
+
+// ===================== RIGHT PANEL =====================
+function openRP(tab) {
+  switchTab(tab);
+  document.getElementById('right-panel').classList.add('open');
+  document.getElementById('panel-overlay').classList.add('show');
+  if(tab==='json') syncRaw();
+  if(tab==='history') updateHistUI();
+}
+function closeRP() { document.getElementById('right-panel').classList.remove('open'); document.getElementById('panel-overlay').classList.remove('show'); }
+function switchTab(tab) {
+  document.querySelectorAll('.rp-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.rp-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  document.getElementById(`pane-${tab}`).classList.add('active');
+  if(tab==='json') syncRaw();
+  if(tab==='history') updateHistUI();
+}
+
+// ===================== RAW JSON =====================
+let _rawTimer=null;
+function syncRaw() {
+  if(!cfg) return;
+  const ta=document.getElementById('raw-json'); if(!ta) return;
+  const p=ta.selectionStart; ta.value=JSON.stringify(cfgForExport(),null,2);
+  try{ta.setSelectionRange(p,p);}catch(e){}
+  setValStatus('valid','✓','JSON is valid');
+  ta.classList.remove('has-error');
+  document.getElementById('err-detail').classList.remove('show');
+}
+function onRawInput() { clearTimeout(_rawTimer); _rawTimer=setTimeout(validateRaw,400); }
+function validateRaw() {
+  const ta=document.getElementById('raw-json'), text=ta.value.trim(); if(!text) return;
+  try {
+    const p=JSON.parse(text);
+    if(!Array.isArray(p)) { setValStatus('invalid','✕','"Not an array — expected [ {...}, ... ]"'); showErr('Root must be a JSON array.'); return; }
+    setValStatus('valid','✓',`Valid — ${p.length} point${p.length!==1?'s':''}`);
+    document.getElementById('err-detail').classList.remove('show');
+  } catch(e) { setValStatus('invalid','✕','Syntax error'); showErr(e.message); }
+}
+function applyRaw() {
+  const text=document.getElementById('raw-json').value.trim();
+  try {
+    const p=JSON.parse(text);
+    if(!Array.isArray(p)){showErr('Must be an array.');setValStatus('invalid','✕','Not an array');return;}
+    cfg=p; selIdx=Math.min(selIdx,cfg.length-1);
+    extractGroupsFromCfg();
+    markMod('Applied raw JSON'); refreshUI(); setValStatus('valid','✓','Applied'); setStatus('RAW JSON APPLIED');
+  } catch(e) { showErr('Cannot apply: '+e.message); setValStatus('invalid','✕','Syntax error'); }
+}
+function rawKeydown(e) {
+  if(e.key==='Tab'){e.preventDefault();const t=e.target,s=t.selectionStart,en=t.selectionEnd;t.value=t.value.substring(0,s)+'  '+t.value.substring(en);t.selectionStart=t.selectionEnd=s+2;onRawInput();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter') applyRaw();
+}
+function setValStatus(type,icon,msg) {
+  const el=document.getElementById('val-status'); el.className=`val-status ${type}`;
+  document.getElementById('val-icon').textContent=icon; document.getElementById('val-msg').textContent=msg;
+}
+function showErr(msg) { const el=document.getElementById('err-detail'); el.textContent='⚠ '+msg; el.classList.add('show'); }
+
+// ===================== DRAG & DROP =====================
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{
+  e.preventDefault();
+  const f=e.dataTransfer.files[0];
+  if(f&&(f.name.endsWith('.json')||f.type==='application/json')) {
+    const r=new FileReader();
+    r.onload=ev=>{try{const p=JSON.parse(ev.target.result);cfg=Array.isArray(p)?p:[p];hist=[];histIdx=-1;selIdx=-1;refreshUI();snap('Loaded: '+f.name);setStatus('LOADED — '+f.name);}catch(err){alert('Invalid JSON: '+err.message);}};
+    r.readAsText(f);
+  }
+});
+
+// ===================== OCR IMPORT =====================
+const API_KEY_STORAGE = 'mpg_ocr_api_key';
+function getApiKey()       { return localStorage.getItem(API_KEY_STORAGE) || ''; }
+function saveApiKey(val)   { val = val.trim(); if (val) localStorage.setItem(API_KEY_STORAGE, val); else localStorage.removeItem(API_KEY_STORAGE); }
+
+let ocrQueue = [];
+let ocrId = 0;
+
+function triggerOcr() {
+  // Pre-fill key input if already saved
+  const inp = document.getElementById('ocr-api-key');
+  if (inp && !inp.value) inp.value = getApiKey();
+  document.getElementById('ocr-in').value = '';
+  document.getElementById('ocr-in').click();
+}
+
+function handleOcrFiles(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  const inp = document.getElementById('ocr-api-key');
+  if (inp && !inp.value) inp.value = getApiKey();
+  document.getElementById('ocr-modal').classList.add('show');
+  const empty = document.getElementById('ocr-empty');
+  if (empty) empty.style.display = 'none';
+  files.forEach(f => queueOcr(f));
+}
+
+function queueOcr(file) {
+  const id = ++ocrId;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const item = {
+      id, file, dataUrl: e.target.result,
+      status: 'pending',   // pending|scanning|done|error
+      type: 'trigger',     // 'trigger' or 'spawn'
+      result: null,        // { x, y, z }
+      pointIdx: 'new',     // 'new' or index into cfg
+      groupId: '',         // group id to assign on import
+      errorMsg: ''
+    };
+    ocrQueue.push(item);
+    renderOcrQueue();
+    runOcr(id);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function callVision(dataUrl, imageType) {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('No API key set — enter your Gemini API key in the OCR Import panel');
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) throw new Error('Invalid image data');
+
+  const prompt = imageType === 'trigger'
+    ? 'This is a DayZ editor screenshot showing a trigger/zone position. Extract ONLY the position coordinates and respond in exactly this format with nothing else:\nX: <number>\nY: <number>\nZ: <number>\n\nIf a value is not visible respond with 0.'
+    : 'This is a DayZ editor screenshot showing a spawn point position. Extract ONLY the position coordinates and respond in exactly this format with nothing else:\nX: <number>\nY: <number>\nZ: <number>\n\nIf a value is not visible respond with 0.';
+
+  const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: match[1], data: match[2] } },
+          { text: prompt }
+        ]
+      }],
+      generationConfig: { maxOutputTokens: 128, temperature: 0 }
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    const msg = err?.error?.message || JSON.stringify(err) || `HTTP ${resp.status}`;
+    throw new Error(`Gemini API error ${resp.status}: ${msg}`);
+  }
+  const json = await resp.json();
+  const text = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!text.trim()) throw new Error('No response from Gemini');
+  return text;
+}
+
+function parseVisionXYZ(text) {
+  const get = k => { const m = text.match(new RegExp(`${k}:\\s*(-?[\\d.]+)`, 'i')); return m ? parseFloat(m[1]) : null; };
+  const x = get('X'), y = get('Y'), z = get('Z');
+  if (x === null || y === null || z === null || [x,y,z].some(isNaN)) return null;
+  return { x, y, z };
+}
+
+async function runOcr(id) {
+  const item = ocrQueue.find(i => i.id === id);
+  if (!item) return;
+  item.status = 'scanning';
+  renderOcrItem(id);
+  try {
+    setOcrStatus('loading', 'Reading via Claude Vision...');
+    const text = await callVision(item.dataUrl, item.type);
+    setOcrStatus('ready', 'Claude Vision API ready');
+    const parsed = parseVisionXYZ(text);
+    if (parsed) {
+      item.result = parsed;
+      item.status = 'done';
+    } else {
+      item.status = 'error';
+      item.errorMsg = 'Could not parse X/Y/Z coordinates from image.';
+    }
+  } catch(e) {
+    item.status = 'error';
+    item.errorMsg = e.message || 'Vision API failed';
+    setOcrStatus('error', 'Error: ' + (e.message || 'unknown'));
+  }
+  renderOcrItem(id);
+  updateOcrSummary();
+}
+
+function setOcrStatus(state, msg) {
+  const dot = document.getElementById('ocr-eng-dot');
+  const el  = document.getElementById('ocr-eng-msg');
+  if (!dot || !el) return;
+  dot.style.background = {loading:'var(--amber)',ready:'var(--green)',error:'var(--red)'}[state]||'var(--green)';
+  el.textContent = msg;
+}
+
+function renderOcrQueue() {
+  const el = document.getElementById('ocr-queue');
+  if (!el) return;
+  if (!ocrQueue.length) { el.innerHTML='<div class="ocr-empty">No screenshots added yet.</div>'; updateOcrSummary(); return; }
+  ocrQueue.forEach(item => {
+    if (!document.getElementById(`oi-${item.id}`)) {
+      const d = document.createElement('div'); d.id = `oi-${item.id}`; el.appendChild(d);
+    }
+    renderOcrItem(item.id);
+  });
+  updateOcrSummary();
+}
+
+function renderOcrItem(id) {
+  const item = ocrQueue.find(i => i.id === id);
+  const el = document.getElementById(`oi-${id}`);
+  if (!item || !el) return;
+  const r = item.result;
+
+  // Point selector options
+  const ptOpts = `<option value="new" ${item.pointIdx==='new'?'selected':''}>⊕ New point</option>` +
+    (cfg||[]).map((p,i) => `<option value="${i}" ${item.pointIdx==i?'selected':''}>#${p.pointId} ${p.notificationTitle||''}</option>`).join('');
+
+  // Group selector options
+  const grpOpts = `<option value="" ${!item.groupId?'selected':''}>— No Group —</option>` +
+    getGroups().map(g => `<option value="${g.id}" ${item.groupId===g.id?'selected':''}>${g.name}</option>`).join('');
+
+  let body = '';
+  if (item.status === 'scanning') {
+    body = `<div class="ocr-st scanning">⟳ Scanning...</div>`;
+  } else if (item.status === 'error') {
+    body = `<div class="ocr-st err">✕ ${item.errorMsg}</div>`;
+  } else if (item.status === 'done' && r) {
+    body = `
+      <div class="ocr-st done">✓ Parsed successfully</div>
+      <div class="ocr-fields">
+        <div class="ocr-field">X:<span>${r.x}</span></div>
+        <div class="ocr-field">Y:<span>${r.y}</span></div>
+        <div class="ocr-field">Z:<span>${r.z}</span></div>
+      </div>
+      <div class="ocr-assign">
+        <button class="type-pill ${item.type==='trigger'?'active-trigger':''}" onclick="ocrSetType(${id},'trigger')">⊙ Trigger Pos</button>
+        <button class="type-pill ${item.type==='spawn'?'active-spawn':''}" onclick="ocrSetType(${id},'spawn')">✦ Spawn Pos</button>
+        <select onchange="ocrSetPoint(${id},this.value)" style="flex:2;">${ptOpts}</select>
+      </div>
+      <div class="ocr-assign" style="margin-top:4px;">
+        <select onchange="ocrSetGroup(${id},this.value)" style="flex:1;border-color:${item.groupId?(groupById(item.groupId)?groupById(item.groupId).color:'var(--border)'):'var(--border)'}">
+          ${grpOpts}
+        </select>
+      </div>`;
+  } else {
+    body = `<div class="ocr-st" style="color:var(--text-dim);">⏳ Waiting...</div>`;
+  }
+
+  // For pending/scanning show type selector too so user can switch before result
+  if (item.status !== 'done') {
+    body += `<div class="ocr-assign" style="margin-top:5px;">
+      <button class="type-pill ${item.type==='trigger'?'active-trigger':''}" onclick="ocrSetType(${id},'trigger')">⊙ Trigger Pos</button>
+      <button class="type-pill ${item.type==='spawn'?'active-spawn':''}" onclick="ocrSetType(${id},'spawn')">✦ Spawn Pos</button>
+    </div>`;
+  }
+
+  el.className = `ocr-item${item.status==='done'?' ok':item.status==='error'?' err':''}`;
+  el.innerHTML = `
+    <img class="ocr-thumb" src="${item.dataUrl}" alt="${item.file.name}">
+    <div class="ocr-detail">
+      <div class="ocr-fname">${item.file.name}</div>
+      ${body}
+    </div>
+    <button class="ocr-rm" onclick="ocrRemove(${id})">✕</button>
+    ${item.status==='scanning'?'<div class="ocr-bar"></div>':''}`;
+}
+
+function ocrSetType(id, type) {
+  const item = ocrQueue.find(i => i.id === id);
+  if (!item) return;
+  // If already scanned with different type, re-scan
+  const rescan = item.status === 'done' && item.type !== type;
+  item.type = type;
+  if (rescan) { item.status = 'pending'; item.result = null; runOcr(id); }
+  else renderOcrItem(id);
+}
+function ocrSetPoint(id, val) { const i = ocrQueue.find(i => i.id===id); if(i) i.pointIdx = val==='new'?'new':parseInt(val); }
+function ocrSetGroup(id, gid) { const i = ocrQueue.find(i => i.id===id); if(i) { i.groupId=gid; renderOcrItem(id); } }
+function ocrRemove(id) { ocrQueue = ocrQueue.filter(i => i.id!==id); const el=document.getElementById(`oi-${id}`); if(el)el.remove(); if(!ocrQueue.length)renderOcrQueue(); updateOcrSummary(); }
+function clearOcrQueue() { ocrQueue=[]; renderOcrQueue(); }
+function updateOcrSummary() {
+  const el=document.getElementById('ocr-summary'); if(!el)return;
+  const done=ocrQueue.filter(i=>i.status==='done').length, scan=ocrQueue.filter(i=>i.status==='scanning').length, err=ocrQueue.filter(i=>i.status==='error').length, tot=ocrQueue.length;
+  el.textContent = tot ? `${done} ready · ${scan} scanning · ${err} failed · ${tot} total` : '';
+}
+
+function importAllOcr() {
+  if (!cfg) { alert('Load or create a config first.'); return; }
+  const ready = ocrQueue.filter(i => i.status==='done' && i.result);
+  if (!ready.length) { alert('No successfully scanned images to import.'); return; }
+  let added=0, updated=0;
+
+  ready.forEach(item => {
+    const { x, y, z } = item.result;
+    const posStr = `${x} ${y} ${z}`;
+
+    if (item.type === 'trigger') {
+      if (item.pointIdx === 'new') {
+        const id = nextId();
+        const newPt = {
+          pointId:id, isDebugEnabled:0, isDisabled:0, showVisualisation:0,
+          notificationTitle:`Point ${id}`, notificationTextEnter:'', notificationTextExit:'',
+          notificationTextSpawn:'', notificationTextWin:'', notificationTime:8,
+          notificationIcon:'set:dayz_gui image:iconSkull',
+          triggerDependencies:[], triggerDependenciesAnyOf:0,
+          triggersToEnableOnEnter:[], triggersToEnableOnFirstSpawn:[], triggersToEnableOnWin:[], triggersToEnableOnLeave:[],
+          triggerPosition: posStr, triggerDebugColor:'blue',
+          triggerRadius:'50.0', triggerHeight:'', triggerWidthX:'', triggerWidthY:'',
+          triggerFirstDelay:'300', triggerCooldown:'60', triggerSafeDistance:0,
+          triggerEnterDelay:0, triggerCleanupOnLeave:0, triggerCleanupOnLunchTime:0,
+          triggerCleanupImmersive:0, triggerCleanupDelay:0, triggerInactiveResetDelay:0,
+          triggerWorkingTime:'0-24', triggerDisableOnWin:0, triggerDisableOnLeave:0,
+          spawnPositions:['0 0 0'], spawnRadius:10, spawnMin:1, spawnMax:3,
+          spawnCountLimit:10, spawnLoopInside:1, spawnQueueDelay:0,
+          spawnList:[], clearDeathAnimals:0, clearDeathZombies:0, mappingData:[]
+        };
+        if (item.groupId) newPt._group = item.groupId;
+        cfg.push(newPt); added++;
+      } else {
+        const idx = parseInt(item.pointIdx);
+        if (!isNaN(idx) && cfg[idx]) {
+          cfg[idx].triggerPosition = posStr;
+          if (item.groupId) cfg[idx]._group = item.groupId;
+          updated++;
+        }
+      }
+    } else {
+      // spawn position
+      if (item.pointIdx === 'new') {
+        const id = nextId();
+        const newPt = {
+          pointId:id, isDebugEnabled:0, isDisabled:0, showVisualisation:0,
+          notificationTitle:`Point ${id}`, notificationTextEnter:'', notificationTextExit:'',
+          notificationTextSpawn:'', notificationTextWin:'', notificationTime:8,
+          notificationIcon:'set:dayz_gui image:iconSkull',
+          triggerDependencies:[], triggerDependenciesAnyOf:0,
+          triggersToEnableOnEnter:[], triggersToEnableOnFirstSpawn:[], triggersToEnableOnWin:[], triggersToEnableOnLeave:[],
+          triggerPosition:'0 0 0', triggerDebugColor:'blue',
+          triggerRadius:'50.0', triggerHeight:'', triggerWidthX:'', triggerWidthY:'',
+          triggerFirstDelay:'300', triggerCooldown:'60', triggerSafeDistance:0,
+          triggerEnterDelay:0, triggerCleanupOnLeave:0, triggerCleanupOnLunchTime:0,
+          triggerCleanupImmersive:0, triggerCleanupDelay:0, triggerInactiveResetDelay:0,
+          triggerWorkingTime:'0-24', triggerDisableOnWin:0, triggerDisableOnLeave:0,
+          spawnPositions:[posStr], spawnRadius:10, spawnMin:1, spawnMax:3,
+          spawnCountLimit:10, spawnLoopInside:1, spawnQueueDelay:0,
+          spawnList:[], clearDeathAnimals:0, clearDeathZombies:0, mappingData:[]
+        };
+        if (item.groupId) newPt._group = item.groupId;
+        cfg.push(newPt); added++;
+      } else {
+        const idx = parseInt(item.pointIdx);
+        if (!isNaN(idx) && cfg[idx]) {
+          if (!cfg[idx].spawnPositions) cfg[idx].spawnPositions = [];
+          cfg[idx].spawnPositions.push(posStr);
+          if (item.groupId) cfg[idx]._group = item.groupId;
+          updated++;
+        }
+      }
+    }
+  });
+
+  markMod(`OCR import: ${added} new, ${updated} updated`);
+  refreshUI();
+  closeModal('ocr-modal');
+  clearOcrQueue();
+  setStatus(`OCR: ${added} point${added!==1?'s':''} created, ${updated} updated`);
+}
+
+// Drop support on OCR modal drop zone
+document.addEventListener('DOMContentLoaded', () => {
+  const dz = document.getElementById('ocr-dz');
+  if (!dz) return;
+  ['dragenter','dragover'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add('drag-over'); }));
+  ['dragleave','drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.remove('drag-over'); }));
+  dz.addEventListener('drop', ev => {
+    const files = Array.from(ev.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length) {
+      document.getElementById('ocr-modal').classList.add('show');
+      const inp = document.getElementById('ocr-api-key'); if (inp && !inp.value) inp.value = getApiKey();
+      files.forEach(f => queueOcr(f));
+    }
+  });
+});
+
+// ===================== CLASS DATABASE =====================
+const CLASS_DB = {"DayZ Update 1.21": ["AK74_Wood", "FN_FAL", "AK74_Handguard_Wood", "AK74_Buttstock_Wood", "HunterJacket_Woodland", "HunterPants_Woodland", "TacticalGoggles", "GasCanister_Large", "Fishnet_Trap"], "DayZ Update 1.22": ["Deagle_Pistol", "M4A1_SBR", "Deagle_Scope", "M4_CQB_Handguard", "PoliceBelt", "PoliceVest_Green", "Handheld_Fishfinder", "OilLamp"], "DayZ Update 1.23": ["MP7_Submachinegun", "Mosin_Nagant_Wood", "MP7_Suppressor", "Mosin_Compensator", "PlateCarrier_Variant", "TacticalHelmet_Visor", "Portable_SolarPanel", "Electronic_Lock"], "DayZ Update 1.24": ["M82_SniperRifle", "Uzi_Pro", "M82_Bipod", "Uzi_Pro_Suppressor", "GhillieSuit_Snow", "CombatBoots_Desert", "Field_HospitalTent", "Portable_Generator"], "DayZ Update 1.25": ["M249_LMG", "SP5_SniperRifle", "M249_Bipod", "SP5_Suppressor", "TacticalHelmet_Winter", "CombatGloves_Black", "Portable_WaterPurifier", "Handheld_FlareGun"], "clothes": ["Chestplate", "SantasBeard", "AviatorGlasses", "Blouse_Blue", "Blouse_Green", "Blouse_Violet", "Blouse_White", "Breeches_Beetcheck", "Breeches_Beige", "Breeches_Black", "Breeches_Blackcheck", "Breeches_Blue", "Breeches_Browncheck", "Breeches_Green", "Breeches_Pink", "Breeches_Red", "Breeches_White", "Chainmail", "Chainmail_Coif", "Chainmail_Leggings", "ChristmasHeadband_Antlers", "ChristmasHeadband_Gingerbread", "ChristmasHeadband_Trees", "CrookedNose", "DesignerGlasses", "EyePatch_Improvised", "FaceCover_Improvised", "FeetCover_Improvised", "HandsCover_Improvised", "HeadCover_Improvised", "HipPack_Black", "HipPack_Green", "HipPack_Medical", "HipPack_Party", "LegsCover_Improvised", "MouthRag", "Skirt_Blue", "Skirt_Red", "Skirt_White", "Skirt_Yellow", "Sneakers_Black", "Sneakers_Gray", "Sneakers_Green", "Sneakers_Red", "Sneakers_White", "SportGlasses_Black", "SportGlasses_Blue", "SportGlasses_Green", "SportGlasses_Orange", "Sweater_Blue", "Sweater_Gray", "Sweater_Green", "Sweater_Red", "TacticalGoggles", "ThickFramesGlasses", "ThinFramesGlasses", "TorsoCover_Improvised", "WinterCoif_Black", "WinterCoif_Blue", "WinterCoif_Green", "WinterCoif_Skull", "WitchHood_Black", "WitchHood_Brown", "WitchHood_Chainmail_Black", "WitchHood_Chainmail_Brown", "WitchHood_Chainmail_Red", "WitchHood_Red", "Bandana_Blackpattern", "Bandana_Camopattern", "Bandana_Greenpattern", "Bandana_Polkapattern", "Bandana_Redpattern", "Armband_APA", "Armband_Altis", "Armband_BabyDeer", "Armband_Bear", "Armband_Black", "Armband_Blue", "Armband_Bohemia", "Armband_BrainZ", "Armband_CDF", "Armband_CHEL", "Armband_CMC", "Armband_Cannibals", "Armband_Chedaki", "Armband_Chernarus", "Armband_Crook", "Armband_DayZ", "Armband_Green", "Armband_HunterZ", "Armband_Livonia", "Armband_LivoniaArmy", "Armband_LivoniaPolice", "Armband_NAPA", "Armband_NSahrani", "Armband_Orange", "Armband_Pink", "Armband_Pirates", "Armband_RSTA", "Armband_Red", "Armband_Refuge", "Armband_Rex", "Armband_Rooster", "Armband_SSahrani", "Armband_Snake", "Armband_TEC", "Armband_UEC", "Armband_White", "Armband_Wolf", "Armband_Yellow", "Armband_Zagorky", "Armband_Zenit", "Balaclava3Holes_Beige", "Balaclava3Holes_Black", "Balaclava3Holes_Blue", "Balaclava3Holes_Green", "BalaclavaMask_Beige", "BalaclavaMask_Black", "BalaclavaMask_Blackskull", "BalaclavaMask_Blue", "BalaclavaMask_Green", "BalaclavaMask_Pink", "BalaclavaMask_White", "EyeMask_Black", "EyeMask_Blue", "EyeMask_Christmas", "EyeMask_Dead", "EyeMask_NewYears", "EyeMask_Red", "EyeMask_Valentines", "EyeMask_Yellow", "HockeyMask", "MimeMask_Female", "MimeMask_Male", "NioshFaceMask", "SurgicalMask", "WeldingMask", "AirborneMask", "BeanieHat_Beige", "BeanieHat_Black", "BeanieHat_Blue", "BeanieHat_Brown", "BeanieHat_Green", "BeanieHat_Grey", "BeanieHat_Pink", "BeanieHat_Red", "BoonieHat_Black", "BoonieHat_Blue", "BoonieHat_DPM", "BoonieHat_Dubok", "BoonieHat_Flecktran", "BoonieHat_NavyBlue", "BoonieHat_Olive", "BoonieHat_Orange", "BoonieHat_Red", "BoonieHat_Tan", "CowboyHat_Brown", "CowboyHat_black", "CowboyHat_darkBrown", "CowboyHat_green", "LeatherHat_Beige", "LeatherHat_Black", "LeatherHat_Brown", "LeatherHat_Natural", "MedicalScrubsHat_Blue", "MedicalScrubsHat_Green", "MedicalScrubsHat_White", "MorozkoHat", "OfficerHat", "PetushokHat_Black", "PetushokHat_Green", "PetushokHat_Yellow", "SantasHat", "WitchHat", "NorseHelm", "GreatHelm", "PumpkinHelmet", "Ssh68Helmet", "TankerHelmet", "ZSh3PilotHelmet", "Mich2001Helmet", "GorkaHelmet", "PilotkaCap", "PoliceCap", "PrisonerCap", "GorkaHelmetVisor", "NBCHoodGray", "NBCHoodYellow", "OKZKCap_Beige", "OKZKCap_Green", "BallisticHelmet_Black", "BallisticHelmet_Green", "BallisticHelmet_UN", "FirefightersHelmet_Red", "FirefightersHelmet_White", "FirefightersHelmet_Yellow", "MilitaryBeret_CDF", "MilitaryBeret_ChDKZ", "MilitaryBeret_NZ", "MilitaryBeret_Red", "MilitaryBeret_UN", "DarkMotoHelmet_Black", "DarkMotoHelmet_Blue", "DarkMotoHelmet_Green", "DarkMotoHelmet_Grey", "DarkMotoHelmet_Lime", "DarkMotoHelmet_Red", "DarkMotoHelmet_White", "DarkMotoHelmet_Yellow", "DarkMotoHelmet_YellowScarred", "DirtBikeHelmet_Black", "DirtBikeHelmet_Blue", "DirtBikeHelmet_Chernarus", "DirtBikeHelmet_Green", "DirtBikeHelmet_Khaki", "DirtBikeHelmet_Mouthguard", "DirtBikeHelmet_Police", "DirtBikeHelmet_Red", "DirtBikeHelmet_Visor", "HockeyHelmet_Black", "HockeyHelmet_Blue", "HockeyHelmet_Red", "HockeyHelmet_White", "ConstructionHelmet_Blue", "ConstructionHelmet_Lime", "ConstructionHelmet_Orange", "ConstructionHelmet_Red", "ConstructionHelmet_White", "ConstructionHelmet_Yellow", "SkateHelmet_Black", "SkateHelmet_Blue", "SkateHelmet_Gray", "SkateHelmet_Green", "SkateHelmet_Red", "MotoHelmet_Black", "MotoHelmet_Blue", "MotoHelmet_Green", "MotoHelmet_Grey", "MotoHelmet_Lime", "MotoHelmet_Red", "MotoHelmet_White", "MotoHelmet_Yellow", "RadarCap_Black", "RadarCap_Blue", "RadarCap_Brown", "RadarCap_Green", "RadarCap_Red", "ZmijovkaCap_Black", "ZmijovkaCap_Blue", "ZmijovkaCap_Brown", "ZmijovkaCap_Green", "ZmijovkaCap_Red", "BaseballCap_Beige", "BaseballCap_Black", "BaseballCap_Blue", "BaseballCap_CMMG_Black", "BaseballCap_CMMG_Pink", "BaseballCap_Camo", "BaseballCap_Olive", "BaseballCap_Pink", "BaseballCap_Red", "FlatCap_Black", "FlatCap_BlackCheck", "FlatCap_Blue", "FlatCap_Brown", "FlatCap_BrownCheck", "FlatCap_Grey", "FlatCap_GreyCheck", "FlatCap_Red", "Ushanka_Black", "Ushanka_Blue", "Ushanka_Green", "LabCoat", "BDUJacket", "TTsKOJacket_Camo", "DenimJacket", "TelnyashkaShirt", "Tshirt_10thAnniversary", "ChernarusSportShirt", "LeatherShirt_Natural", "NurseDress_Blue", "NurseDress_White", "TShirt_Beige", "TShirt_Black", "TShirt_Blue", "TShirt_Green", "TShirt_Grey", "TShirt_OrangeWhiteStripes", "TShirt_Red", "TShirt_RedBlackStripes", "TShirt_White", "Hoodie_Black", "Hoodie_Blue", "Hoodie_Brown", "Hoodie_Green", "Hoodie_Grey", "Hoodie_Red", "TacticalShirt_Black", "TacticalShirt_Grey", "TacticalShirt_Olive", "TacticalShirt_Tan", "MedicalScrubsShirt_Blue", "MedicalScrubsShirt_Green", "MedicalScrubsShirt_White", "Shirt_BlueCheck", "Shirt_BlueCheckBright", "Shirt_GreenCheck", "Shirt_PlaneBlack", "Shirt_RedCheck", "Shirt_WhiteCheck", "LeatherJacket_Beige", "LeatherJacket_Black", "LeatherJacket_Brown", "LeatherJacket_Natural", "M65Jacket_Black", "M65Jacket_Khaki", "M65Jacket_Olive", "M65Jacket_Tan", "NBCJacketGray", "NBCJacketYellow", "ParamedicJacket_Blue", "ParamedicJacket_Crimson", "ParamedicJacket_Green", "PoliceJacket", "PoliceJacketOrel", "PrisonUniformJacket", "QuiltedJacket_Black", "QuiltedJacket_Blue", "QuiltedJacket_Green", "QuiltedJacket_Grey", "QuiltedJacket_Orange", "QuiltedJacket_Red", "QuiltedJacket_Violet", "QuiltedJacket_Yellow", "RidersJacket_Black", "TrackSuitJacket_Black", "TrackSuitJacket_Blue", "TrackSuitJacket_Green", "TrackSuitJacket_LightBlue", "TrackSuitJacket_Red", "USMCJacket_Desert", "USMCJacket_Woodland", "BomberJacket_Black", "BomberJacket_Blue", "BomberJacket_Brown", "BomberJacket_Grey", "BomberJacket_Maroon", "BomberJacket_Olive", "BomberJacket_SkyBlue", "FirefighterJacket_Beige", "FirefighterJacket_Black", "GorkaEJacket_Autumn", "GorkaEJacket_Flat", "GorkaEJacket_PautRev", "GorkaEJacket_Summer", "HikingJacket_Black", "HikingJacket_Blue", "HikingJacket_Green", "HikingJacket_Red", "HuntingJacket_Autumn", "HuntingJacket_Brown", "HuntingJacket_Spring", "HuntingJacket_Summer", "HuntingJacket_Winter", "JumpsuitJacket_Blue", "JumpsuitJacket_Gray", "JumpsuitJacket_Green", "JumpsuitJacket_Red", "WoolCoat_Beige", "WoolCoat_Black", "WoolCoat_BlackCheck", "WoolCoat_Blue", "WoolCoat_BlueCheck", "WoolCoat_BrownCheck", "WoolCoat_Green", "WoolCoat_GreyCheck", "WoolCoat_Red", "WoolCoat_RedCheck", "WomanSuit_Beige", "WomanSuit_Black", "WomanSuit_Blue", "WomanSuit_Brown", "WomanSuit_DarkGrey", "WomanSuit_Khaki", "WomanSuit_LightGrey", "WomanSuit_White", "ManSuit_Beige", "ManSuit_Black", "ManSuit_Blue", "ManSuit_Brown", "ManSuit_DarkGrey", "ManSuit_Khaki", "ManSuit_LightGrey", "ManSuit_White", "Raincoat_Black", "Raincoat_Blue", "Raincoat_Green", "Raincoat_Orange", "Raincoat_Pink", "Raincoat_Red", "Raincoat_Yellow", "MiniDress_BlueChecker", "MiniDress_BlueWithDots", "MiniDress_BrownChecker", "MiniDress_GreenChecker", "MiniDress_Pink", "MiniDress_PinkChecker", "MiniDress_RedChecker", "MiniDress_WhiteChecker", "HuntingVest", "PoliceVest", "PressVest_Blue", "PressVest_LightBlue", "ReflexVest", "SmershVest", "HighCapacityVest_Black", "HighCapacityVest_Olive", "UKAssVest_Black", "UKAssVest_Camo", "UKAssVest_Khaki", "UKAssVest_Olive", "LeatherStorageVest_Beige", "LeatherStorageVest_Black", "LeatherStorageVest_Brown", "LeatherStorageVest_Natural", "PlateCarrierVest", "PlateCarrierVest_Black", "PlateCarrierVest_Camo", "PlateCarrierVest_Green", "PlateCarrierHolster", "PlateCarrierHolster_Black", "PlateCarrierHolster_Camo", "PlateCarrierHolster_Green", "PlateCarrierPouches", "PlateCarrierPouches_Black", "PlateCarrierPouches_Camo", "PlateCarrierPouches_Green", "LeatherGloves_Beige", "LeatherGloves_Black", "LeatherGloves_Brown", "LeatherGloves_Natural", "NBCGlovesGray", "NBCGlovesYellow", "OMNOGloves_Brown", "OMNOGloves_Gray", "PaddedGloves_Beige", "PaddedGloves_Brown", "PaddedGloves_Threat", "SurgicalGloves_Blue", "SurgicalGloves_Green", "SurgicalGloves_LightBlue", "SurgicalGloves_White", "TacticalGloves_Beige", "TacticalGloves_Black", "TacticalGloves_Green", "WoolGlovesFingerless_Black", "WoolGlovesFingerless_ChristmasBlue", "WoolGlovesFingerless_ChristmasRed", "WoolGlovesFingerless_Green", "WoolGlovesFingerless_Tan", "WoolGlovesFingerless_White", "WoolGloves_Black", "WoolGloves_ChristmasBlue", "WoolGloves_ChristmasRed", "WoolGloves_Green", "WoolGloves_Tan", "WoolGloves_White", "WorkingGloves_Beige", "WorkingGloves_Black", "WorkingGloves_Brown", "WorkingGloves_Yellow", "LeatherGloves_Beige", "LeatherGloves_Black", "LeatherGloves_Brown", "LeatherGloves_Natural", "MilitaryBelt", "RopeBelt", "CivilianBelt", "LeatherBelt_Beige", "LeatherBelt_Black", "LeatherBelt_Brown", "LeatherBelt_Natural", "TaloonBag_Blue", "TaloonBag_Green", "TaloonBag_Orange", "TaloonBag_Violet", "TortillaBag", "WaterproofBag_Green", "WaterproofBag_Orange", "WaterproofBag_Yellow", "Slingbag_Black", "Slingbag_Brown", "Slingbag_Gray", "SmershBag", "AliceBag_Black", "AliceBag_Camo", "AliceBag_Green", "AssaultBag_Black", "AssaultBag_Green", "AssaultBag_Ttsko", "CanvasBag_Medical", "CanvasBag_Olive", "ChildBag_Blue", "ChildBag_Green", "ChildBag_Red", "CourierBag", "CoyoteBag_Brown", "CoyoteBag_Green", "DryBag_Black", "DryBag_Blue", "DryBag_Green", "DryBag_Orange", "DryBag_Red", "DryBag_Yellow", "DrysackBag_Green", "DrysackBag_Orange", "DrysackBag_Yellow", "DuffelBagSmall_Camo", "DuffelBagSmall_Green", "DuffelBagSmall_Medical", "FurCourierBag", "FurImprovisedBag", "HuntingBag", "HuntingBag_Hannah", "ImprovisedBag", "MountainBag_Blue", "MountainBag_Green", "MountainBag_Orange", "MountainBag_Red", "LeatherSack_Beige", "LeatherSack_Black", "LeatherSack_Brown", "LeatherSack_Natural", "ArmyPouch_Beige", "ArmyPouch_Black", "ArmyPouch_Camo", "ArmyPouch_Green", "ShortJeans_Black", "ShortJeans_Blue", "ShortJeans_Brown", "ShortJeans_Darkblue", "ShortJeans_Green", "ShortJeans_Red", "HunterPants_Autumn", "HunterPants_Brown", "HunterPants_Spring", "HunterPants_Summer", "HunterPants_Winter", "JumpsuitPants_Blue", "JumpsuitPants_Green", "JumpsuitPants_Grey", "JumpsuitPants_Red", "LeatherPants_Beige", "LeatherPants_Black", "LeatherPants_Brown", "LeatherPants_Natural", "MedicalScrubsPants_Blue", "MedicalScrubsPants_Green", "MedicalScrubsPants_White", "NBCPantsGray", "NBCPantsYellow", "ParamedicPants_Blue", "ParamedicPants_Crimson", "ParamedicPants_Green", "PolicePants", "PolicePantsOrel", "PrisonUniformPants", "SlacksPants_Beige", "SlacksPants_Black", "SlacksPants_Blue", "SlacksPants_Brown", "SlacksPants_DarkGrey", "SlacksPants_Khaki", "SlacksPants_LightGrey", "SlacksPants_White", "TrackSuitPants_Black", "TrackSuitPants_Blue", "TrackSuitPants_Green", "TrackSuitPants_LightBlue", "TrackSuitPants_Red", "TTSKOPants", "USMCPants_Desert", "USMCPants_Woodland", "BDUPants", "CanvasPantsMidi_Beige", "CanvasPantsMidi_Blue", "CanvasPantsMidi_Grey", "CanvasPantsMidi_Red", "CanvasPantsMidi_Violet", "CanvasPants_Beige", "CanvasPants_Blue", "CanvasPants_Grey", "CanvasPants_Red", "CanvasPants_Violet", "CargoPants_Beige", "CargoPants_Black", "CargoPants_Blue", "CargoPants_Green", "CargoPants_Grey", "FirefightersPants_Beige", "FirefightersPants_Black", "GorkaPants_Autumn", "GorkaPants_Flat", "GorkaPants_PautRev", "GorkaPants_Summer", "NBCBootsGray", "NBCBootsYellow", "TTSKOBoots", "MedievalBoots", "HikingBootsLow_Beige", "HikingBootsLow_Black", "HikingBootsLow_Blue", "HikingBootsLow_Grey", "HikingBoots_Black", "HikingBoots_Brown", "JungleBoots_Beige", "JungleBoots_Black", "JungleBoots_Brown", "JungleBoots_Green", "JungleBoots_Olive", "MilitaryBoots_Beige", "MilitaryBoots_Black", "MilitaryBoots_Bluerock", "MilitaryBoots_Brown", "MilitaryBoots_Redpunk", "WorkingBoots_Beige", "WorkingBoots_Brown", "WorkingBoots_Green", "WorkingBoots_Grey", "WorkingBoots_Yellow", "CombatBoots_Beige", "CombatBoots_Black", "CombatBoots_Brown", "CombatBoots_Green", "CombatBoots_Grey", "AthleticShoes_Black", "AthleticShoes_Blue", "AthleticShoes_Brown", "AthleticShoes_Green", "AthleticShoes_Grey", "DressShoes_Beige", "DressShoes_Black", "DressShoes_Brown", "DressShoes_Sunburst", "DressShoes_White", "JoggingShoes_Black", "JoggingShoes_Blue", "JoggingShoes_Red", "JoggingShoes_Violet", "JoggingShoes_White", "LeatherShoes_Beige", "LeatherShoes_Black", "LeatherShoes_Brown", "LeatherShoes_Natural", "Wellies_Black", "Wellies_Brown", "Wellies_Green", "Wellies_Grey"], "weapons": ["UniversalLight", "M18SmokeGrenade_Green", "M18SmokeGrenade_Purple", "M18SmokeGrenade_Red", "M18SmokeGrenade_White", "M18SmokeGrenade_Yellow", "AmmoBox", "AmmoBox_00buck_10rnd", "AmmoBox_12gaRubberSlug_10Rnd", "AmmoBox_12gaSlug_10Rnd", "AmmoBox_22_50Rnd", "AmmoBox_308WinTracer_20Rnd", "AmmoBox_308Win_20Rnd", "AmmoBox_357_20Rnd", "AmmoBox_380_35rnd", "AmmoBox_45ACP_25rnd", "AmmoBox_545x39Tracer_20Rnd", "AmmoBox_545x39_20Rnd", "AmmoBox_556x45Tracer_20Rnd", "AmmoBox_556x45_20Rnd", "AmmoBox_762x39Tracer_20Rnd", "AmmoBox_762x39_20Rnd", "AmmoBox_762x54Tracer_20Rnd", "AmmoBox_762x54_20Rnd", "AmmoBox_9x19_25rnd", "AmmoBox_9x39AP_20Rnd", "AmmoBox_9x39_20Rnd", "Ammo_12gaPellets", "Ammo_12gaRubberSlug", "Ammo_12gaSlug", "Ammo_22", "Ammo_308Win", "Ammo_308WinTracer", "Ammo_357", "Ammo_380", "Ammo_40mm_Chemgas", "Ammo_40mm_Explosive", "Ammo_40mm_Smoke_Black", "Ammo_40mm_Smoke_Green", "Ammo_40mm_Smoke_Red", "Ammo_40mm_Smoke_White", "Ammo_45ACP", "Ammo_545x39", "Ammo_545x39Tracer", "Ammo_556x45", "Ammo_556x45Tracer", "Ammo_762x39", "Ammo_762x39Tracer", "Ammo_762x54", "Ammo_762x54Tracer", "Ammo_9x19", "Ammo_9x39", "Ammo_9x39AP", "Ammo_Flare", "Ammo_FlareBlue", "Ammo_FlareGreen", "Ammo_FlareRed", "Ammo_HuntingBolt", "Ammo_ImprovisedBolt_1", "Ammo_ImprovisedBolt_2", "BarbedBaseballBat", "BaseballBat", "BrassKnuckles_Dull", "BrassKnuckles_Shiny", "CrudeMachete", "FangeKnife", "FryingPan", "HuntingKnife", "KitchenKnife", "KukriKnife", "Cleaver", "Mace", "Machete", "OrientalMachete", "Pipe", "Sickle", "SpearBone", "SpearStone", "SteakKnife", "StoneKnife", "Sword", "CombatKnife", "Flaregun", "BUISOptic", "HuntingOptic", "KashtanOptic", "KazuarOptic", "KobraOptic", "M68Optic", "PSO11Optic", "PSO1Optic", "PUScopeOptic", "PistolOptic", "ReflexOptic", "StarlightOptic", "TLRLight", "FlashGrenade", "Grenade_ChemGas", "ImprovisedExplosive", "NailedBaseballBat", "LeatherKnifeSheath", "M67Grenade", "M9A1_Bayonet", "MP5_Compensator", "MP5_PlasticHndgrd", "MP5_RailHndgrd", "MP5k_StockBttstck", "Mosin_Bayonet", "Mosin_Compensator", "NylonKnifeSheath", "PistolSuppressor", "Plastic_Explosive", "RDG2SmokeGrenade_Black", "RDG2SmokeGrenade_White", "RGD5Grenade", "RemoteDetonator", "RemoteDetonatorReceiver", "RemoteDetonatorTrigger", "ACOGOptic", "ACOGOptic_6x", "AK101", "AK101_Black", "AK101_Green", "Magnum", "AK74", "AK74_Black", "AK74_Green", "AK74_Hndgrd", "AK74_WoodBttstck", "AKM", "AKS74U", "AKS74U_Black", "AKS74U_Bttstck", "AKS74U_Green", "AK_Bayonet", "AK_FoldingBttstck", "AK_FoldingBttstck_Black", "AK_FoldingBttstck_Green", "AK_PlasticBttstck", "AK_PlasticBttstck_Black", "AK_PlasticBttstck_Green", "AK_PlasticHndgrd", "AK_RailHndgrd", "AK_RailHndgrd_Black", "AK_RailHndgrd_Green", "AK_Suppressor", "AK_WoodBttstck", "AK_WoodBttstck_Black", "AK_WoodBttstck_Camo", "AK_WoodHndgrd", "AK_WoodHndgrd_Black", "AK_WoodHndgrd_Camo", "ASVAL", "M14", "M16A2", "M4A1", "M4A1_Black", "M4A1_Green", "M4_CQBBttstck", "M4_CarryHandleOptic", "M4_MPBttstck", "M4_MPHndgrd", "M4_OEBttstck", "M4_PlasticHndgrd", "M4_RISHndgrd", "M4_RISHndgrd_Black", "M4_RISHndgrd_Green", "M4_Suppressor", "M4_T3NRDSOptic", "VSS", "Winchester70", "UMP45", "ClaymoreMine", "Broom", "Broom_Birch", "Aug", "AugShort", "B95", "CZ527", "CZ550", "CZ61", "CZ75", "Colt1911", "Crossbow_Autumn", "Crossbow_Black", "Crossbow_Summer", "Crossbow_Wood", "Deagle", "Deagle_Gold", "Derringer_Black", "Derringer_Grey", "Derringer_Pink", "Engraved1911", "FAL", "FAMAS", "FNP45_MRDSOptic", "FNX45", "Fal_FoldingBttstck", "Fal_OeBttstck", "Glock19", "Izh18", "Izh18Shotgun", "SawedoffIzh43Shotgun", "Longhorn", "M79", "MKII", "MP5K", "MakarovIJ70", "Mosin9130", "Mosin9130_Black", "Mosin9130_Camo", "Mosin9130_Green", "Mp133Shotgun", "P1", "PP19", "PP19_Bttstck", "Repeater", "Ruger1022", "SKS", "SKS_Bayonet", "SSG82", "SVD", "Saiga", "Saiga_Bttstck", "SawedoffB95", "SawedoffFAMAS", "SawedoffIzh18", "SawedoffIzh18Shotgun", "SawedoffIzh43Shotgun", "SawedoffMagnum", "SawedoffMosin9130", "SawedoffMosin9130_Black", "SawedoffMosin9130_Camo", "SawedoffMosin9130_Green", "Scout", "Scout_Chernarus", "Scout_Livonia", "Mag_1911_7Rnd", "Mag_AK101_30Rnd", "Mag_AK74_30Rnd", "Mag_AK74_45Rnd", "Mag_AKM_30Rnd", "Mag_AKM_Drum75Rnd", "Mag_AKM_Palm30Rnd", "Mag_Aug_30Rnd", "Mag_CMAG_10Rnd", "Mag_CMAG_20Rnd", "Mag_CMAG_30Rnd", "Mag_CMAG_40Rnd", "Mag_CZ527_5rnd", "Mag_CZ550_10Rnd", "Mag_CZ61_20Rnd", "Mag_CZ75_15Rnd", "Mag_Deagle_9rnd", "Mag_FAL_20Rnd", "Mag_FAMAS_25Rnd", "Mag_FNX45_15Rnd", "Mag_Glock_15Rnd", "Mag_IJ70_8Rnd", "Mag_M14_10Rnd", "Mag_M14_20Rnd", "Mag_MKII_10Rnd", "Mag_MP5_15Rnd", "Mag_MP5_30Rnd", "Mag_P1_8Rnd", "Mag_PP19_64Rnd", "Mag_Ruger1022_15Rnd", "Mag_Ruger1022_30Rnd", "Mag_SSG82_5rnd", "Mag_STANAG_30Rnd", "Mag_STANAG_60Rnd", "Mag_SVD_10Rnd", "Mag_Saiga_5Rnd", "Mag_Saiga_8Rnd", "Mag_Saiga_Drum20Rnd", "Mag_Scout_5Rnd", "Mag_UMP_25Rnd", "Mag_VAL_20Rnd", "Mag_VSS_10Rnd"], "medical": ["SalineBag", "SalineBagIV", "BloodBagEmpty", "BloodBagFull", "BloodBagIV", "BloodTestKit", "BandageDressing", "Canteen", "CharcoalTablets", "DisinfectantAlcohol", "DisinfectantSpray", "Epinephrine", "FirstAidKit", "Morphine", "PainkillerTablets", "PurificationTablets", "TetracyclineAntibiotics", "VitaminBottle", "StartKitIV", "AntiChemInjector"], "tools": ["GasMask", "GasMask_Filter", "GasMask_Filter_Improvised", "GP5GasMask", "SmallGasCanister", "SmallGuts", "TannedLeather", "WatchtowerKit", "PartyTent", "PartyTent_Blue", "PartyTent_Brown", "PartyTent_LunaparkPen_Black", "Pen_Blue", "Pen_Green", "Pen_Red", "Rangefinder", "XmasLights", "WoodAxe", "WoodenCrate", "WoodenLog", "WoodenPlank", "WoodenStick", "Wrench", "WeaponCleaningKit", "Whetstone", "AntiPestsSpray", "BarbedWire", "Battery9V", "BatteryCharger", "Bear_Beige", "Bear_Dark", "Bear_Pink", "Bear_White", "BurlapSack", "BurlapSackCover", "BurlapStrip", "CanOpener", "CanisterGasoline", "CarTent", "CombinationLock", "CombinationLock4", "Compass", "CookingStand", "Crowbar", "DuctTape", "ElectronicRepairKit", "EpoxyPutty", "FarmingHoe", "Fence", "FenceKit", "FieldShovel", "FirefighterAxe", "FirefighterAxe_Black", "FirefighterAxe_Green", "Firewood", "FireworksLauncher", "FishNetTrap", "FishingRod", "Flashlight", "GardenLime", "Hacksaw", "Hammer", "HandDrillKit", "HandSaw", "HandcuffKeys", "Handcuffs", "Hatchet", "Headtorch_Black", "Headtorch_Grey", "Heatpack", "Hook", "ImprovisedFishingRod", "ImprovisedSuppressor", "IodineTincture", "LargeGasCanister", "LargeTent", "LeatherSewingKit", "Lockpick", "LongTorch", "LongWoodenStick", "LugWrench", "Matchbox", "MeatTenderizer", "MediumGasCanister", "MediumTent", "MediumTent_Green", "MediumTent_Orange", "Megaphone", "MetalPlate", "MetalWire", "NVGHeadstrap", "NVGoggles", "Nail", "NailBox", "Netting", "OrienteeringCompass", "Paper", "PersonalRadio", "PetrolLighter", "Pickaxe", "PipeWrench", "Pitchfork", "Pliers", "PortableGasLamp", "PortableGasStove", "Pot", "PowerGenerator", "Rag", "Roadflare", "Rope", "Screwdriver", "SeaChest", "SewingKit", "SharpWoodenStick", "ShelterFabric", "ShelterKit", "ShelterLeather", "ShelterSite", "ShelterStick", "Shovel", "SledgeHammer", "SmallProtectorCase", "SmallStone", "Splint", "Spotlight", "Stone", "TerritoryFlagKit", "Thermometer", "TireRepairKit", "Torch", "Tripod", "TripwireTrap", "CableReel"], "food": ["Tomato", "TomatoSeeds", "TomatoSeedsPack", "Zucchini", "ZucchiniSeeds", "ZucchiniSeedsPack", "Potato", "PotatoSeed", "Pumpkin", "PumpkinSeeds", "PumpkinSeedsPack", "ZucchiniSeeds", "ZucchiniSeedsPack", "PepperSeeds", "PepperSeedsPack", "Plant_Pepper", "Plant_Potato", "Plant_Pumpkin", "Plant_Tomato", "Plant_Zucchini", "Candycane_Green", "Candycane_Red", "Candycane_RedGreen", "Candycane_Yellow", "CarpFilletMeat", "CatFoodCan", "CatFoodCan_Opened", "ChickenBreastMeat", "Chips", "CowSteakMeat", "DeerSteakMeat", "DogFoodCan", "DogFoodCan_Opened", "GoatSteakMeat", "Honey", "HumanSteakMeat", "LactariusMushroom", "Lard", "Lunchmeat", "Lunchmeat_Opened", "BrisketSpread", "BrisketSpread_Opened", "BoxCerealCrunchin", "BoarSteakMeat", "BearSteakMeat", "BakedBeansCan", "BakedBeansCan_Opened", "Bitterlings", "BoletusMushroom", "Mackerel", "MackerelFilletMeat", "AuriculariaMushroom", "MacrolepiotaMushroom", "Apple", "Marmalade", "Pajka", "Pajka_Opened", "Pate", "Pate_Opened", "PeachesCan", "PeachesCan_Opened", "Pear", "PigSteakMeat", "PleurotusMushroom", "Plum", "PorkCan", "PorkCan_Opened", "PowderedMilk", "SaltySticks", "SambucusBerry", "SlicedPumpkin", "Sardines", "SardinesCan", "SardinesCan_Opened", "SpaghettiCan", "SpaghettiCan_Opened", "TacticalBaconCan", "TacticalBaconCan_Opened", "TunaCan", "TunaCan_Opened", "UnknownFoodCan", "UnknownFoodCan_Opened", "Zagorky", "ZagorkyChocolate", "ZagorkyPeanuts", "GreenBellPepper", "CaninaBerry", "AgaricusMushroomSheepPelt", "SheepSteakMeat", "WolfSteakMeat", "WildboarPelt", "WolfPelt", "BearPelt", "CowPelt", "DeerPelt", "GoatPelt", "Guts", "PigPelt", "RabbitLegMeat", "RabbitPelt", "Crackers", "SodaCan_Cola", "SodaCan_Fronta", "SodaCan_Kvass", "SodaCan_Pipsi", "SodaCan_Spite", "WaterBottle", "Rice"], "zombies": ["ZmbF_BlueCollarFat_Blue", "ZmbF_BlueCollarFat_Green", "ZmbF_BlueCollarFat_Red", "ZmbF_BlueCollarFat_White", "ZmbF_CitizenANormal_Beige", "ZmbF_CitizenANormal_Blue", "ZmbF_CitizenANormal_Brown", "ZmbF_CitizenBSkinny", "ZmbF_Clerk_Normal_Blue", "ZmbF_Clerk_Normal_Green", "ZmbF_Clerk_Normal_Red", "ZmbF_Clerk_Normal_White", "ZmbF_DoctorSkinny", "ZmbF_HikerSkinny_Blue", "ZmbF_HikerSkinny_Green", "ZmbF_HikerSkinny_Grey", "ZmbF_HikerSkinny_Red", "ZmbF_JoggerSkinny_Blue", "ZmbF_JoggerSkinny_Brown", "ZmbF_JoggerSkinny_Green", "ZmbF_JoggerSkinny_Red", "ZmbF_JournalistNormal_Blue", "ZmbF_JournalistNormal_Green", "ZmbF_JournalistNormal_Red", "ZmbF_JournalistNormal_White", "ZmbF_MechanicNormal_Beige", "ZmbF_MechanicNormal_Green", "ZmbF_MechanicNormal_Grey", "ZmbF_MechanicNormal_Orange", "ZmbF_MilkMaidOld_Beige", "ZmbF_MilkMaidOld_Black", "ZmbF_MilkMaidOld_Green", "ZmbF_MilkMaidOld_Grey", "ZmbF_NurseFat", "ZmbF_ParamedicNormal_Blue", "ZmbF_ParamedicNormal_Green", "ZmbF_ParamedicNormal_Red", "ZmbF_PatientOld", "ZmbF_PoliceWomanNormal", "ZmbF_ShortSkirt_beige", "ZmbF_ShortSkirt_black", "ZmbF_ShortSkirt_brown", "ZmbF_ShortSkirt_checks", "ZmbF_ShortSkirt_green", "ZmbF_ShortSkirt_grey", "ZmbF_ShortSkirt_red", "ZmbF_ShortSkirt_stripes", "ZmbF_ShortSkirt_white", "ZmbF_ShortSkirt_yellow", "ZmbF_SkaterYoung_Brown", "ZmbF_SkaterYoung_Striped", "ZmbF_SkaterYoung_Violet", "ZmbF_SurvivorNormal_Blue", "ZmbF_SurvivorNormal_Orange", "ZmbF_SurvivorNormal_Red", "ZmbF_SurvivorNormal_White", "ZmbF_VillagerOld_Blue", "ZmbF_VillagerOld_Green", "ZmbF_VillagerOld_Red", "ZmbF_VillagerOld_White", "ZmbM_CitizenASkinny_Blue", "ZmbM_CitizenASkinny_Brown", "ZmbM_CitizenASkinny_Grey", "ZmbM_CitizenASkinny_Red", "ZmbM_CitizenBFat_Blue", "ZmbM_CitizenBFat_Green", "ZmbM_CitizenBFat_Red", "ZmbM_ClerkFat_Brown", "ZmbM_ClerkFat_Grey", "ZmbM_ClerkFat_Khaki", "ZmbM_ClerkFat_White", "ZmbM_CommercialPilotOld_Blue", "ZmbM_CommercialPilotOld_Brown", "ZmbM_CommercialPilotOld_Grey", "ZmbM_CommercialPilotOld_Olive", "ZmbM_ConstrWorkerNormal_Beige", "ZmbM_ConstrWorkerNormal_Black", "ZmbM_ConstrWorkerNormal_Green", "ZmbM_ConstrWorkerNormal_Grey", "ZmbM_DoctorFat", "ZmbM_FarmerFat_Beige", "ZmbM_FarmerFat_Blue", "ZmbM_FarmerFat_Brown", "ZmbM_FarmerFat_Green", "ZmbM_FirefighterNormal", "ZmbM_FishermanOld_Blue", "ZmbM_FishermanOld_Green", "ZmbM_FishermanOld_Grey", "ZmbM_FishermanOld_Red", "ZmbM_HandymanNormal_Beige", "ZmbM_HandymanNormal_Blue", "ZmbM_HandymanNormal_Green", "ZmbM_HandymanNormal_Grey", "ZmbM_HandymanNormal_White", "ZmbM_HeavyIndustryWorker", "ZmbM_HermitSkinny_Beige", "ZmbM_HermitSkinny_Black", "ZmbM_HermitSkinny_Green", "ZmbM_HermitSkinny_Red", "ZmbM_HikerSkinny_Blue", "ZmbM_HikerSkinny_Green", "ZmbM_HikerSkinny_Yellow", "ZmbM_HunterOld_Autumn", "ZmbM_HunterOld_Spring", "ZmbM_HunterOld_Summer", "ZmbM_HunterOld_Winter", "ZmbM_Jacket_beige", "ZmbM_Jacket_black", "ZmbM_Jacket_blue", "ZmbM_Jacket_bluechecks", "ZmbM_Jacket_brown", "ZmbM_Jacket_greenchecks", "ZmbM_Jacket_grey", "ZmbM_Jacket_khaki", "ZmbM_Jacket_magenta", "ZmbM_Jacket_stripes", "ZmbM_JoggerSkinny_Blue", "ZmbM_JoggerSkinny_Green", "ZmbM_JoggerSkinny_Red", "ZmbM_JournalistSkinny", "ZmbM_MechanicSkinny_Blue", "ZmbM_MechanicSkinny_Green", "ZmbM_MechanicSkinny_Grey", "ZmbM_MechanicSkinny_Red", "ZmbM_MotobikerFat_Beige", "ZmbM_MotobikerFat_Black", "ZmbM_MotobikerFat_Blue", "ZmbM_NBC_Grey", "ZmbM_NBC_Yellow", "ZmbM_OffshoreWorker_Green", "ZmbM_OffshoreWorker_Orange", "ZmbM_OffshoreWorker_Red", "ZmbM_OffshoreWorker_Yellow", "ZmbM_ParamedicNormal_Black", "ZmbM_ParamedicNormal_Blue", "ZmbM_ParamedicNormal_Green", "ZmbM_ParamedicNormal_Red", "ZmbM_PatientSkinny", "ZmbM_PatrolNormal_Autumn", "ZmbM_PatrolNormal_Flat", "ZmbM_PatrolNormal_PautRev", "ZmbM_PatrolNormal_Summer", "ZmbM_PolicemanFat", "ZmbM_PolicemanSpecForce", "ZmbM_PolicemanSpecForce_Heavy", "ZmbM_PrisonerSkinny", "ZmbM_Santa", "ZmbM_SkaterYoung_Blue", "ZmbM_SkaterYoung_Brown", "ZmbM_SkaterYoung_Green", "ZmbM_SkaterYoung_Grey", "ZmbM_SoldierNormal", "ZmbM_VillagerOld_Blue", "ZmbM_VillagerOld_Green", "ZmbM_VillagerOld_White", "ZmbM_priestPopSkinny", "ZmbM_usSoldier_Heavy_Woodland", "ZmbM_usSoldier_Officer_Desert", "ZmbM_usSoldier_normal_Desert", "ZmbM_usSoldier_normal_Woodland"], "vehicles": ["CarBattery", "CarRadiator", "GlowPlug", "HeadlightH7", "HeadlightH7_Box", "SparkPlug", "TruckBattery", "OffroadHatchback", "OffroadHatchback_Blue", "OffroadHatchback_White", "Offroad_02", "Offroad_02_Door_1_1", "Offroad_02_Door_1_1_Rust", "Offroad_02_Door_1_2", "Offroad_02_Door_1_2_Rust", "Offroad_02_Door_2_1", "Offroad_02_Door_2_1_Rust", "Offroad_02_Door_2_2", "Offroad_02_Door_2_2_Rust", "Offroad_02_Hood", "Offroad_02_Trunk", "Offroad_02_Trunk_Rust", "Offroad_02_Wheel", "HatchbackDoors_CoDriver", "HatchbackDoors_CoDriver_Blue", "HatchbackDoors_CoDriver_BlueRust", "HatchbackDoors_CoDriver_GreenRust", "HatchbackDoors_CoDriver_White", "HatchbackDoors_CoDriver_WhiteRust", "HatchbackDoors_Driver", "HatchbackDoors_Driver_Blue", "HatchbackDoors_Driver_BlueRust", "HatchbackDoors_Driver_GreenRust", "HatchbackDoors_Driver_White", "HatchbackDoors_Driver_WhiteRust", "HatchbackHood", "HatchbackHood_Blue", "HatchbackHood_BlueRust", "HatchbackHood_GreenRust", "HatchbackHood_White", "HatchbackHood_WhiteRust", "HatchbackTrunk", "HatchbackTrunk_Blue", "HatchbackTrunk_BlueRust", "HatchbackTrunk_GreenRust", "HatchbackTrunk_White", "HatchbackTrunk_WhiteRust", "HatchbackWheel", "HatchbackWheel_Ruined", "Hatchback_02", "Hatchback_02_Black", "Hatchback_02_Blue", "Hatchback_02_Door_1_1", "Hatchback_02_Door_1_1_Black", "Hatchback_02_Door_1_1_BlackRust", "Hatchback_02_Door_1_1_Blue", "Hatchback_02_Door_1_1_BlueRust", "Hatchback_02_Door_1_1_RedRust", "Hatchback_02_Door_1_2", "Hatchback_02_Door_1_2_Black", "Hatchback_02_Door_1_2_BlackRust", "Hatchback_02_Door_1_2_Blue", "Hatchback_02_Door_1_2_BlueRust", "Hatchback_02_Door_1_2_RedRust", "Hatchback_02_Door_2_1", "Hatchback_02_Door_2_1_Black", "Hatchback_02_Door_2_1_BlackRust", "Hatchback_02_Door_2_1_Blue", "Hatchback_02_Door_2_1_BlueRust", "Hatchback_02_Door_2_1_RedRust", "Hatchback_02_Door_2_2", "Hatchback_02_Door_2_2_Black", "Hatchback_02_Door_2_2_BlackRust", "Hatchback_02_Door_2_2_Blue", "Hatchback_02_Door_2_2_BlueRust", "Hatchback_02_Door_2_2_RedRust", "Hatchback_02_Hood", "Hatchback_02_Hood_Black", "Hatchback_02_Hood_BlackRust", "Hatchback_02_Hood_Blue", "Hatchback_02_Hood_BlueRust", "Hatchback_02_Hood_RedRust", "Hatchback_02_Trunk", "Hatchback_02_Trunk_Black", "Hatchback_02_Trunk_BlackRust", "Hatchback_02_Trunk_Blue", "Hatchback_02_Trunk_BlueRust", "Hatchback_02_Trunk_RedRust", "Hatchback_02_Wheel", "Hatchback_02_Wheel_Ruined", "CivSedanDoors_BackLeft", "CivSedanDoors_BackLeft_Black", "CivSedanDoors_BackLeft_BlackRust", "CivSedanDoors_BackLeft_WhiteRust", "CivSedanDoors_BackLeft_Wine", "CivSedanDoors_BackLeft_WineRust", "CivSedanDoors_BackRight", "CivSedanDoors_BackRight_Black", "CivSedanDoors_BackRight_BlackRust", "CivSedanDoors_BackRight_WhiteRust", "CivSedanDoors_BackRight_Wine", "CivSedanDoors_BackRight_WineRust", "CivSedanDoors_CoDriver", "CivSedanDoors_CoDriver_Black", "CivSedanDoors_CoDriver_BlackRust", "CivSedanDoors_CoDriver_WhiteRust", "CivSedanDoors_CoDriver_Wine", "CivSedanDoors_CoDriver_WineRust", "CivSedanDoors_Driver", "CivSedanDoors_Driver_Black", "CivSedanDoors_Driver_BlackRust", "CivSedanDoors_Driver_WhiteRust", "CivSedanDoors_Driver_Wine", "CivSedanDoors_Driver_WineRust", "CivSedanHood", "CivSedanHood_Black", "CivSedanHood_BlackRust", "CivSedanHood_WhiteRust", "CivSedanHood_Wine", "CivSedanHood_WineRust", "CivSedanTrunk", "CivSedanTrunk_Black", "CivSedanTrunk_BlackRust", "CivSedanTrunk_WhiteRust", "CivSedanTrunk_Wine", "CivSedanTrunk_WineRust", "CivSedanWheel", "CivSedanWheel_Ruined", "CivilianSedan", "CivilianSedan_Black", "CivilianSedan_Wine", "Truck_01_Covered", "Truck_01_Covered_Blue", "Truck_01_Covered_Orange", "Truck_01_Door_1_1", "Truck_01_Door_1_1_Blue", "Truck_01_Door_1_1_BlueRust", "Truck_01_Door_1_1_GreenRust", "Truck_01_Door_1_1_Orange", "Truck_01_Door_1_1_OrangeRust", "Truck_01_Door_2_1", "Truck_01_Door_2_1_Blue", "Truck_01_Door_2_1_BlueRust", "Truck_01_Door_2_1_GreenRust", "Truck_01_Door_2_1_Orange", "Truck_01_Door_2_1_OrangeRust", "Truck_01_Hood", "Truck_01_Hood_Blue", "Truck_01_Hood_BlueRust", "Truck_01_Hood_GreenRust", "Truck_01_Hood_Orange", "Truck_01_Hood_OrangeRust", "Truck_01_Wheel", "Truck_01_WheelDouble", "Truck_01_WheelDouble_Ruined", "Truck_01_Wheel_Ruined", "Sedan_02", "Sedan_02_Door_1_1", "Sedan_02_Door_1_1_Grey", "Sedan_02_Door_1_1_GreyRust", "Sedan_02_Door_1_1_Red", "Sedan_02_Door_1_1_RedRust", "Sedan_02_Door_1_1_YellowRust", "Sedan_02_Door_1_2", "Sedan_02_Door_1_2_Grey", "Sedan_02_Door_1_2_GreyRust", "Sedan_02_Door_1_2_Red", "Sedan_02_Door_1_2_RedRust", "Sedan_02_Door_1_2_YellowRust", "Sedan_02_Door_2_1", "Sedan_02_Door_2_1_Grey", "Sedan_02_Door_2_1_GreyRust", "Sedan_02_Door_2_1_Red", "Sedan_02_Door_2_1_RedRust", "Sedan_02_Door_2_1_YellowRust", "Sedan_02_Door_2_2", "Sedan_02_Door_2_2_Grey", "Sedan_02_Door_2_2_GreyRust", "Sedan_02_Door_2_2_Red", "Sedan_02_Door_2_2_RedRust", "Sedan_02_Door_2_2_YellowRust", "Sedan_02_Grey", "Sedan_02_Hood", "Sedan_02_Hood_Grey", "Sedan_02_Hood_GreyRust", "Sedan_02_Hood_Red", "Sedan_02_Hood_RedRust", "Sedan_02_Hood_YellowRust", "Sedan_02_Red", "Sedan_02_Trunk", "Sedan_02_Trunk_Grey", "Sedan_02_Trunk_GreyRust", "Sedan_02_Trunk_Red", "Sedan_02_Trunk_RedRust", "Sedan_02_Trunk_YellowRust", "Sedan_02_Wheel", "Sedan_02_Wheel_Ruined"], "other": ["Wreck_Mi8_Crashed", "Wreck_SantasSleigh", "Wreck_UH1Y", "PlantMaterial", "Bark_Birch", "Bark_Oak", "GiftBox_Large_1", "GiftBox_Large_2", "GiftBox_Large_3", "GiftBox_Large_4", "GiftBox_Medium_1", "GiftBox_Medium_2", "GiftBox_Medium_3", "GiftBox_Medium_4", "GiftBox_Small_1", "GiftBox_Small_2", "GiftBox_Small_3", "GiftBox_Small_4", "GhillieAtt_Mossy", "GhillieAtt_Tan", "GhillieAtt_Woodland", "GhillieBushrag_Mossy", "GhillieBushrag_Tan", "GhillieBushrag_Woodland", "GhillieHood_Mossy", "GhillieHood_Tan", "GhillieHood_Woodland", "GhillieSuit_Mossy", "GhillieSuit_Tan", "GhillieSuit_Woodland", "GhillieTop_Mossy", "GhillieTop_Tan", "GhillieTop_Woodland", "GiftWrapPaper", "BarrelHoles_Blue", "BarrelHoles_Green", "BarrelHoles_Red", "BarrelHoles_Yellow", "Barrel_Blue", "Barrel_Green", "Barrel_Red", "Barrel_Yellow"], "Animals": ["Animal_BosTaurusF_Brown", "Animal_BosTaurusF_Spotted", "Animal_BosTaurusF_White", "Animal_BosTaurus_Brown", "Animal_BosTaurus_Spotted", "Animal_BosTaurus_White", "Animal_CanisLupus_Grey", "Animal_CanisLupus_White", "Animal_CapraHircusF", "Animal_CapraHircus_Black", "Animal_CapraHircus_Brown", "Animal_CapraHircus_White", "Animal_CapreolusCapreolus", "Animal_CapreolusCapreolusF", "Animal_CervusElaphus", "Animal_CervusElaphusF", "Animal_GallusGallusDomesticus", "Animal_GallusGallusDomesticusF_Brown", "Animal_GallusGallusDomesticusF_Spotted", "Animal_GallusGallusDomesticusF_White", "Animal_OvisAries", "Animal_OvisAriesF", "Animal_SusDomesticus", "Animal_SusScrofa", "Animal_UrsusArctos"], "Flags": ["Flag_APA", "Flag_Altis", "Flag_BabyDeer", "Flag_Bear", "Flag_Bohemia", "Flag_BrainZ", "Flag_CDF", "Flag_CHEL", "Flag_CMC", "Flag_Cannibals", "Flag_Chedaki", "Flag_Chernarus", "Flag_Crook", "Flag_DayZ", "Flag_HunterZ", "Flag_Livonia", "Flag_LivoniaArmy", "Flag_LivoniaPolice", "Flag_NAPA", "Flag_NSahrani", "Flag_Pirates", "Flag_RSTA", "Flag_Refuge", "Flag_Rex", "Flag_Rooster", "Flag_SSahrani", "Flag_Snake", "Flag_TEC", "Flag_UEC", "Flag_White", "Flag_Wolf", "Flag_Zagorky", "Flag_Zenit"], "random shit that still needs sorted lol": ["TerritoryFlag", "UndergroundStash", "Watchtower", "AlarmClock_Blue", "AlarmClock_Green", "AlarmClock_Red", "AnniversaryBox", "Anniversary_FireworksLauncher", "Bait", "BaseRadio", "BearTrap", "Binoculars", "Blowtorch", "Bone", "BoneBait", "BoneHook", "BoneKnife", "Bonfire", "Camonet", "Carp", "Cauldron", "Chemlight_Blue", "Chemlight_Green", "Chemlight_Red", "Chemlight_White", "Chemlight_Yellow", "ChernarusMap", "ChernarusMap_Open", "ChestHolster", "ChickenFeather", "ChristmasTree", "ContaminatedArea_Dynamic", "DeadChicken_Brown", "DeadChicken_Spotted", "DeadChicken_White", "DeadRabbit", "DeadRooster", "EasterEgg", "Fabric", "Fireplace", "FireplaceIndoor", "GPSReceiver", "GardenPlot", "GardenPlotGreenhouse", "GardenPlotPolytunnel", "HandcuffsLocked", "KitchenTimer", "LandMineTrap", "OvenIndoor", "PileOfWoodenPlanks", "RabbitSnareTrap", "SmallFishTrap", "Splint_Applied", "StaticObj_Decal_damage_long2_DE", "StaticObj_Decal_damage_long3_DE", "StaticObj_Misc_SupplyBox1_DE", "StaticObj_Misc_SupplyBox2_DE", "StaticObj_Misc_SupplyBox3_DE", "StaticObj_Roadblock_Wood_Long_DE", "StaticObj_Roadblock_Wood_Small_DE", "StaticObj_Train_Wagon_Flat_Industrial_Barrels_DE", "StaticObj_Train_Wagon_Flat_Industrial_Planks_DE", "StaticObj_Wreck_BMP1_DE", "StaticObj_Wreck_BMP1_NoPlacement_DE", "StaticObj_Wreck_BMP2_DE", "StaticObj_Wreck_BRDM_DE", "StaticObj_Wreck_Decal_Big_DE", "StaticObj_Wreck_Decal_Small1_DE", "StaticObj_Wreck_Decal_Small2_DE", "StaticObj_Wreck_T72_Chassis_DE", "StaticObj_Wreck_T72_Turret_DE", "StaticObj_Wreck_Train_742_Blue_DE", "StaticObj_Wreck_Train_742_Blue_Mil_DE", "StaticObj_Wreck_Train_742_Red_DE", "StaticObj_Wreck_Train_742_Red_Mil_DE", "StaticObj_Wreck_Train_Wagon_Flat_DE", "StaticObj_Wreck_Train_Wagon_Flat_Mil_DE", "StaticObj_Wreck_Train_Wagon_Tanker_DE", "StaticObj_Wreck_Train_Wagon_Tanker_Mil_DE", "StaticObj_Wreck_Uaz_DE", "StaticObj_Wreck_Ural_DE", "Land_Container_1Aoh_DE", "Land_Container_1Bo_DE", "Land_Container_1Mo_DE", "Land_Container_1Moh_DE", "Land_Train_Wagon_Box_DE", "Land_Train_Wagon_Box_Mil_DE", "Land_Wreck_Ikarus_DE", "Land_Wreck_Tractor_DE", "Land_Wreck_Trailer_Closed_DE", "Land_Wreck_V3S_DE", "Land_Wreck_Volha_Police", "Land_Wreck_hb01_aban1_blue_DE", "Land_Wreck_hb01_aban1_police", "Land_Wreck_hb01_aban1_white_DE", "Land_Wreck_hb01_aban2_blue_DE", "Land_Wreck_hb01_aban2_green_DE", "Land_Wreck_hb01_aban2_police", "Land_Wreck_hb02_aban1_blue_DE", "Land_Wreck_hb02_aban1_red_DE", "Land_Wreck_hb02_aban2_black_DE", "Land_Wreck_hb02_aban2_blue_DE", "Land_Wreck_hb02_aban2_red_DE", "Land_Wreck_offroad02_aban1_DE", "Land_Wreck_offroad02_aban2_DE", "Land_Wreck_sed01_aban1_black_DE", "Land_Wreck_sed01_aban1_police", "Land_Wreck_sed01_aban1_police_DE", "Land_Wreck_sed01_aban1_white_DE", "Land_Wreck_sed01_aban1_wine_DE", "Land_Wreck_sed01_aban2_black_DE", "Land_Wreck_sed01_aban2_police", "Land_Wreck_sed01_aban2_police_DE", "Land_Wreck_sed02_aban1_grey_DE", "Land_Wreck_sed02_aban1_red_DE", "Land_Wreck_sed02_aban1_yellow_DE", "Land_Wreck_sed02_aban2_grey_DE", "Land_Wreck_sed02_aban2_red_DE", "Land_Wreck_sed02_aban2_yellow_DE", "Land_wreck_truck01_aban1_blue_DE", "Land_wreck_truck01_aban1_firetruck_DE", "Land_wreck_truck01_aban1_green_DE", "Land_wreck_truck01_aban1_orange_DE", "Land_wreck_truck01_aban2_blue_DE", "Land_wreck_truck01_aban2_firetruck_DE", "Land_wreck_truck01_aban2_green_DE"]};
+
+// Flat list of all classnames for quick search
+const ALL_CLASSES = Object.entries(CLASS_DB).flatMap(([cat, names]) => names.map(n => ({n, cat})));
+
+// ===================== AUTOCOMPLETE =====================
+const AC_MAX = 80; // max dropdown results
+
+function acGetClassName(inputVal) {
+  // Strip any |params suffix to get just the class portion for matching
+  return inputVal.split('|')[0].trim();
+}
+
+function acInput(inp, dropId) {
+  const raw = inp.value;
+  const query = acGetClassName(raw).toLowerCase();
+  const drop = document.getElementById(dropId);
+  if (!drop) return;
+  if (!query || query.length < 1) { acHide(dropId); return; }
+
+  // Search across all categories
+  const results = [];
+  for (const [cat, names] of Object.entries(CLASS_DB)) {
+    for (const name of names) {
+      if (name.toLowerCase().includes(query)) {
+        results.push({ name, cat });
+        if (results.length >= AC_MAX) break;
+      }
+    }
+    if (results.length >= AC_MAX) break;
+  }
+
+  if (!results.length) {
+    drop.innerHTML = '<div class="ac-empty">No matches found</div>';
+    drop.classList.add('show');
+    return;
+  }
+
+  // Group by category
+  const grouped = {};
+  results.forEach(r => { if (!grouped[r.cat]) grouped[r.cat] = []; grouped[r.cat].push(r.name); });
+
+  const inputId = dropId.replace('sl-drop-', 'sl-');
+  let html = '';
+  for (const [cat, names] of Object.entries(grouped)) {
+    html += `<div class="ac-group-hdr">${cat.toUpperCase()}</div>`;
+    names.forEach((name) => {
+      const hi = name.replace(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'), '<mark>$1</mark>');
+      html += `<div class="ac-item" data-name="${name}" data-input="${inputId}" onmousedown="acPick(event,this)">${hi}</div>`;
+    });
+  }
+  html += `<div class="ac-count">${results.length}${results.length>=AC_MAX?'+':''} results</div>`;
+  drop.innerHTML = html;
+  drop.classList.add('show');
+  drop._focusIdx = -1;
+  drop._inputId = inputId;
+}
+
+function acHide(dropId) {
+  const drop = document.getElementById(dropId);
+  if (drop) { drop.classList.remove('show'); drop._focusIdx = -1; }
+}
+
+function acPick(e, el) {
+  if (e) e.preventDefault();
+  const inputId = el.dataset.input;
+  const inp = inputId ? document.getElementById(inputId) : null;
+  if (!inp) return;
+  const name = el.dataset.name;
+  const existing = inp.value;
+  const pipeIdx = existing.indexOf('|');
+  inp.value = pipeIdx >= 0 ? name + existing.slice(pipeIdx) : name;
+  inp.dispatchEvent(new Event('input', {bubbles: true}));
+  // Find and hide the drop
+  const drop = el.closest('.ac-drop');
+  if (drop) { drop.classList.remove('show'); drop._focusIdx = -1; }
+  inp.focus();
+}
+
+function acKeydown(e, dropId, ptIdx, spIdx) {
+  const drop = document.getElementById(dropId);
+  if (!drop || !drop.classList.contains('show')) return;
+  const items = drop.querySelectorAll('.ac-item');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    drop._focusIdx = Math.min((drop._focusIdx ?? -1) + 1, items.length - 1);
+    items.forEach((it, i) => it.classList.toggle('focused', i === drop._focusIdx));
+    items[drop._focusIdx]?.scrollIntoView({block:'nearest'});
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    drop._focusIdx = Math.max((drop._focusIdx ?? 0) - 1, 0);
+    items.forEach((it, i) => it.classList.toggle('focused', i === drop._focusIdx));
+    items[drop._focusIdx]?.scrollIntoView({block:'nearest'});
+  } else if (e.key === 'Enter' && drop._focusIdx >= 0) {
+    e.preventDefault();
+    acPick(null, items[drop._focusIdx]);
+  } else if (e.key === 'Escape') {
+    acHide(dropId);
+  }
+}
+
+// ===================== MAP IMPORT =====================
+let mapParsed = [];     // [ { className, x, y, z, valid, errorMsg, skip, type } ]
+let mapDefaultType = 'trigger'; // 'trigger' | 'spawn' | 'both'
+
+function triggerMapInput() {
+  document.getElementById('map-in').value = '';
+  document.getElementById('map-in').click();
+}
+
+function setMapDefaultType(type) {
+  mapDefaultType = type;
+  ['trigger','spawn','both'].forEach(t => {
+    const btn = document.getElementById(`map-default-${t}`);
+    if (!btn) return;
+    btn.className = 'type-pill';
+    if (t === type) btn.classList.add(t === 'spawn' ? 'active-spawn' : 'active-trigger');
+  });
+  // Also update all rows that haven't been individually overridden
+  mapParsed.forEach(r => { if (!r._typeOverride) r.type = type; });
+  renderMapPreview();
+}
+
+function handleMapFiles(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  mapParsed = [];
+  let pending = files.length, allLines = [];
+  files.forEach(f => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      ev.target.result.split(/\r?\n/).filter(l => l.trim()).forEach(l => allLines.push({ line: l, file: f.name }));
+      if (--pending === 0) {
+        parseMapLines(allLines);
+        populateMapPointSel();
+        document.getElementById('map-modal').classList.add('show');
+        renderMapPreview();
+      }
+    };
+    reader.readAsText(f);
+  });
+}
+
+function parseMapLines(lineObjs) {
+  mapParsed = [];
+  lineObjs.forEach(({ line, file }) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('#')) return;
+    const parts = trimmed.split('|');
+    if (parts.length < 3) {
+      mapParsed.push({ valid: false, errorMsg: `Bad format: "${trimmed}"`, line: trimmed, file, skip: false, type: mapDefaultType });
+      return;
+    }
+    const className = parts[0].trim();
+    const posParts  = parts[1].trim().split(/\s+/);
+    if (posParts.length < 3) {
+      mapParsed.push({ valid: false, errorMsg: `Not enough coords: "${trimmed}"`, line: trimmed, file, skip: false, type: mapDefaultType });
+      return;
+    }
+    const [x, y, z] = posParts.map(Number);
+    if ([x,y,z].some(isNaN)) {
+      mapParsed.push({ valid: false, errorMsg: `Non-numeric coords: "${trimmed}"`, line: trimmed, file, skip: false, type: mapDefaultType });
+      return;
+    }
+    mapParsed.push({ valid: true, className, x, y, z, file, skip: false, type: mapDefaultType, _typeOverride: false });
+  });
+}
+
+function populateMapPointSel() {
+  const sel = document.getElementById('map-point-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="new">⊕ Create new point per row</option>';
+  (cfg || []).forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = `#${p.pointId} ${p.notificationTitle || ''}`;
+    sel.appendChild(opt);
+  });
+}
+
+function mapSetRowType(idx, type) {
+  if (!mapParsed[idx]) return;
+  mapParsed[idx].type = type;
+  mapParsed[idx]._typeOverride = true;
+  renderMapPreview();
+}
+
+function mapToggleSkip(idx, checked) {
+  if (mapParsed[idx]) { mapParsed[idx].skip = checked; renderMapPreview(); }
+}
+
+function setMapStatus(state, msg) {
+  const dot = document.getElementById('map-status-dot');
+  const el  = document.getElementById('map-status-msg');
+  if (!dot || !el) return;
+  dot.style.background = { loading: 'var(--amber)', ready: 'var(--green)', error: 'var(--red)' }[state] || 'var(--text-dim)';
+  el.textContent = msg;
+}
+
+function renderMapPreview() {
+  const wrap    = document.getElementById('map-preview');
+  const summary = document.getElementById('map-summary');
+  if (!wrap) return;
+
+  if (!mapParsed.length) {
+    wrap.innerHTML = '<div class="ocr-empty">No .map file loaded yet.</div>';
+    if (summary) summary.textContent = '';
+    return;
+  }
+
+  const valid   = mapParsed.filter(r => r.valid && !r.skip).length;
+  const invalid = mapParsed.filter(r => !r.valid).length;
+  const skipped = mapParsed.filter(r => r.skip).length;
+  if (summary) summary.textContent = `${valid} ready · ${invalid} invalid · ${skipped} skipped · ${mapParsed.length} total`;
+
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead><tr style="background:#0c1220;border-bottom:1px solid var(--border);">
+      <th style="padding:5px 8px;text-align:left;color:var(--text-dim);font-weight:normal;width:22px;">#</th>
+      <th style="padding:5px 8px;text-align:left;color:var(--text-dim);font-weight:normal;">CLASSNAME</th>
+      <th style="padding:5px 8px;text-align:left;color:var(--text-dim);font-weight:normal;">X · Y · Z</th>
+      <th style="padding:5px 8px;text-align:center;color:var(--text-dim);font-weight:normal;">TYPE</th>
+      <th style="padding:5px 8px;text-align:center;color:var(--text-dim);font-weight:normal;width:40px;">SKIP</th>
+    </tr></thead><tbody>`;
+
+  mapParsed.forEach((row, i) => {
+    const dim = row.skip ? 'opacity:.3;' : '';
+    if (!row.valid) {
+      html += `<tr style="border-bottom:1px solid var(--border);${dim}background:rgba(239,68,68,.04);">
+        <td style="padding:5px 8px;color:var(--text-dim);">${i+1}</td>
+        <td colspan="2" style="padding:5px 8px;color:var(--red);font-size:10px;">${row.errorMsg}</td>
+        <td></td>
+        <td style="padding:5px 8px;text-align:center;">—</td></tr>`;
+      return;
+    }
+    const typePills = `
+      <div style="display:flex;gap:4px;justify-content:center;">
+        <button class="type-pill${row.type==='trigger'||row.type==='both'?' active-trigger':''}" style="padding:2px 7px;font-size:9px;" onclick="mapSetRowType(${i},${row.type==='trigger'?'\'spawn\'':row.type==='spawn'?'\'both\'':'\'spawn\''})">⊙</button>
+        <button class="type-pill${row.type==='spawn'||row.type==='both'?' active-spawn':''}" style="padding:2px 7px;font-size:9px;" onclick="mapSetRowType(${i},${row.type==='spawn'?'\'trigger\'':row.type==='trigger'?'\'both\'':'\'trigger\''})">✦</button>
+      </div>`;
+    html += `<tr style="border-bottom:1px solid var(--border);${dim}">
+      <td style="padding:5px 8px;color:var(--text-dim);">${i+1}</td>
+      <td style="padding:5px 8px;color:var(--text-dim);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${row.className}</td>
+      <td style="padding:5px 8px;color:var(--text-bright);white-space:nowrap;">${row.x.toFixed(3)}, ${row.y.toFixed(3)}, ${row.z.toFixed(3)}</td>
+      <td style="padding:5px 8px;">${typePills}</td>
+      <td style="padding:5px 8px;text-align:center;">
+        <input type="checkbox" ${row.skip?'checked':''} onchange="mapToggleSkip(${i},this.checked)"
+          style="width:auto;padding:0;border:none;cursor:pointer;accent-color:var(--blue);">
+      </td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function clearMapData() {
+  mapParsed = [];
+  renderMapPreview();
+  setMapStatus('loading', 'No file loaded.');
+  const s = document.getElementById('map-summary'); if (s) s.textContent = '';
+}
+
+function importMapData() {
+  if (!cfg) { alert('Load or create a config first.'); return; }
+  const toImport = mapParsed.filter(r => r.valid && !r.skip);
+  if (!toImport.length) { alert('No valid rows to import.'); return; }
+
+  const pointSelVal  = document.getElementById('map-point-sel')?.value;
+  const defRadius    = document.getElementById('map-def-radius')?.value    || '50.0';
+  const defSpawnRad  = parseFloat(document.getElementById('map-def-spawnradius')?.value) || 10;
+  const defColor     = document.getElementById('map-def-color')?.value     || 'blue';
+
+  const assignToIdx  = pointSelVal === 'new' ? null : parseInt(pointSelVal);
+
+  // Helper: get or create the target point
+  let createdIds = [];
+
+  function makeNewPoint(posStr, type) {
+    const id = nextId();
+    const p = {
+      pointId: id, isDebugEnabled: 0, isDisabled: 0, showVisualisation: 0,
+      notificationTitle: `Point ${id}`, notificationTextEnter: '', notificationTextExit: '',
+      notificationTextSpawn: '', notificationTextWin: '', notificationTime: 8,
+      notificationIcon: 'set:dayz_gui image:iconSkull',
+      triggerDependencies: [], triggerDependenciesAnyOf: 0,
+      triggersToEnableOnEnter: [], triggersToEnableOnFirstSpawn: [], triggersToEnableOnWin: [], triggersToEnableOnLeave: [],
+      triggerPosition: type === 'spawn' ? '0 0 0' : posStr,
+      triggerDebugColor: defColor, triggerRadius: defRadius,
+      triggerHeight: '', triggerWidthX: '', triggerWidthY: '',
+      triggerFirstDelay: '300', triggerCooldown: '60', triggerSafeDistance: 0,
+      triggerEnterDelay: 0, triggerCleanupOnLeave: 0, triggerCleanupOnLunchTime: 0,
+      triggerCleanupImmersive: 0, triggerCleanupDelay: 0, triggerInactiveResetDelay: 0,
+      triggerWorkingTime: '0-24', triggerDisableOnWin: 0, triggerDisableOnLeave: 0,
+      spawnPositions: type === 'trigger' ? ['0 0 0'] : [posStr],
+      spawnRadius: defSpawnRad, spawnMin: 1, spawnMax: 3,
+      spawnCountLimit: 10, spawnLoopInside: 1, spawnQueueDelay: 0,
+      spawnList: [], clearDeathAnimals: 0, clearDeathZombies: 0, mappingData: []
+    };
+    cfg.push(p);
+    createdIds.push(id);
+    return cfg.length - 1;
+  }
+
+  toImport.forEach(row => {
+    const posStr = `${row.x} ${row.y} ${row.z}`;
+    const type   = row.type; // 'trigger' | 'spawn' | 'both'
+
+    if (assignToIdx !== null && !isNaN(assignToIdx) && cfg[assignToIdx]) {
+      // Apply to existing point
+      const p = cfg[assignToIdx];
+      if (type === 'trigger' || type === 'both') p.triggerPosition = posStr;
+      if (type === 'spawn'   || type === 'both') { if (!p.spawnPositions) p.spawnPositions = []; p.spawnPositions.push(posStr); }
+    } else {
+      // Create new point per row
+      if (type === 'both') {
+        // Single new point with both set
+        const idx = makeNewPoint(posStr, 'trigger');
+        cfg[idx].spawnPositions = [posStr];
+      } else {
+        makeNewPoint(posStr, type);
+      }
+    }
+  });
+
+  const n = toImport.length;
+  markMod(`MAP import: ${n} entr${n!==1?'ies':'y'} imported`);
+  refreshUI();
+  closeModal('map-modal');
+  clearMapData();
+  setStatus(`MAP IMPORT: ${n} entr${n!==1?'ies':'y'} imported`);
+}
+
+// Drop zone wiring for map modal
+document.addEventListener('DOMContentLoaded', () => {
+  const dz = document.getElementById('map-dz');
+  if (!dz) return;
+  ['dragenter','dragover'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add('drag-over'); }));
+  ['dragleave','drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.remove('drag-over'); }));
+  dz.addEventListener('drop', ev => {
+    const files = Array.from(ev.dataTransfer.files);
+    if (files.length) handleMapFiles({ target: { files } });
+  });
+});
+
+// ===================== INIT =====================
+(function init() {
+  const dz=document.getElementById('drop-zone');
+  ['dragenter','dragover'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag-over');}));
+  ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag-over');}));
+  dz.addEventListener('drop',ev=>{
+    const f=ev.dataTransfer.files[0];
+    if(f){const r=new FileReader();r.onload=e=>{try{const p=JSON.parse(e.target.result);cfg=Array.isArray(p)?p:[p];hist=[];histIdx=-1;selIdx=-1;refreshUI();snap('Loaded: '+f.name);setStatus('LOADED — '+f.name);}catch(err){alert('Invalid JSON: '+err.message);}};r.readAsText(f);}
+  });
+})();
+</script>
+</body>
+</html>
