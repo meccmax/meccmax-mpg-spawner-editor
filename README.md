@@ -1,1 +1,0 @@
-# meccmax-mpg-spawner-editor
